@@ -5,7 +5,6 @@ const dbName = process.env.MONGODB_DB_NAME ?? "gold-smith";
 let clientPromise: Promise<MongoClient> | undefined;
 
 declare global {
-  // eslint-disable-next-line no-var
   var _mongoClientPromise: Promise<MongoClient> | undefined;
 }
 

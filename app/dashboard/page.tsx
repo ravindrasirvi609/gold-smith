@@ -1,0 +1,69 @@
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { LogoutButton } from "@/components/auth/logout-button";
+import { getSession } from "@/lib/auth";
+
+export default async function DashboardPage() {
+  const session = await getSession();
+
+  if (!session) {
+    redirect("/login");
+  }
+
+  return (
+    <main className="min-h-screen bg-background text-foreground">
+      <div className="mx-auto flex min-h-screen w-full max-w-4xl items-center px-6 py-16">
+        <div className="w-full rounded-3xl border bg-card p-8 shadow-sm md:p-10">
+          <div className="flex flex-col gap-3">
+            <p className="text-sm font-medium text-muted-foreground">
+              Signed in successfully
+            </p>
+            <h1 className="text-3xl font-semibold tracking-tight">
+              Welcome back.
+            </h1>
+            <p className="max-w-2xl text-sm leading-6 text-muted-foreground md:text-base">
+              You are authenticated with the email address below. This page is
+              protected by a signed JWT session after email, password, status,
+              role, and permissions were checked.
+            </p>
+          </div>
+
+          <div className="mt-8 grid gap-4 md:grid-cols-2">
+            <div className="rounded-2xl border bg-muted/40 p-5">
+              <h2 className="font-medium">Signed-in email</h2>
+              <p className="mt-2 text-sm text-muted-foreground">{session.email}</p>
+            </div>
+            <div className="rounded-2xl border bg-muted/40 p-5">
+              <h2 className="font-medium">Role</h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                {session.role.name}
+              </p>
+            </div>
+            <div className="rounded-2xl border bg-muted/40 p-5">
+              <h2 className="font-medium">Permissions</h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                {session.permissions.length
+                  ? session.permissions.join(", ")
+                  : "No permissions assigned."}
+              </p>
+            </div>
+            <div className="rounded-2xl border bg-muted/40 p-5">
+              <h2 className="font-medium">What happens next</h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Add your app content here. The auth plumbing is already in
+                place.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-8 flex flex-wrap gap-3">
+            <LogoutButton />
+            <Link href="/login" className="inline-flex items-center text-sm underline underline-offset-4">
+              Switch account
+            </Link>
+          </div>
+        </div>
+      </div>
+    </main>
+  );
+}
