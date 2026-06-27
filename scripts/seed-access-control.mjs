@@ -62,6 +62,24 @@ const permissions = [
     code: "PERMISSION_VIEW",
     description: "Can view permissions",
   },
+  {
+    module: "Permission",
+    action: "Create",
+    code: "PERMISSION_CREATE",
+    description: "Can create permissions",
+  },
+  {
+    module: "Permission",
+    action: "Edit",
+    code: "PERMISSION_EDIT",
+    description: "Can edit permissions",
+  },
+  {
+    module: "Permission",
+    action: "Delete",
+    code: "PERMISSION_DELETE",
+    description: "Can delete permissions",
+  },
 ];
 
 const rolePermissionCodes = {
@@ -75,6 +93,8 @@ const rolePermissionCodes = {
     "ROLE_CREATE",
     "ROLE_EDIT",
     "PERMISSION_VIEW",
+    "PERMISSION_CREATE",
+    "PERMISSION_EDIT",
   ],
   Manager: ["DASHBOARD_VIEW", "USER_VIEW", "PERMISSION_VIEW"],
   "Inventory Executive": ["DASHBOARD_VIEW", "USER_VIEW", "PERMISSION_VIEW"],

@@ -1,11 +1,10 @@
 import bcrypt from "bcryptjs";
 import { ObjectId } from "mongodb";
+import { getRoleOptions } from "@/lib/admin-roles";
 import { getDb } from "@/lib/mongodb";
 
-export type RoleOption = {
-  id: string;
-  name: string;
-};
+export type { RoleOption } from "@/lib/admin-roles";
+export { getRoleOptions };
 
 export type UserListItem = {
   id: string;
@@ -35,20 +34,6 @@ function toObjectId(id: string) {
   }
 
   return new ObjectId(id);
-}
-
-export async function getRoleOptions() {
-  const db = await getDb();
-  const roles = await db
-    .collection("roles")
-    .find({ isActive: true })
-    .sort({ name: 1 })
-    .toArray();
-
-  return roles.map((role) => ({
-    id: String(role._id),
-    name: String(role.name),
-  })) satisfies RoleOption[];
 }
 
 export async function getUsers() {

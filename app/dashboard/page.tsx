@@ -68,6 +68,34 @@ export default async function DashboardPage() {
                 </Link>
               </div>
             ) : null}
+            {hasPermission(session, "ROLE_VIEW") ? (
+              <div className="rounded-2xl border bg-muted/40 p-5">
+                <h2 className="font-medium">Role management</h2>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Open the roles page to create or edit roles and assign permissions.
+                </p>
+                <Link
+                  href="/dashboard/roles"
+                  className="mt-3 inline-flex text-sm underline underline-offset-4"
+                >
+                  Go to roles
+                </Link>
+              </div>
+            ) : null}
+            {hasPermission(session, "PERMISSION_VIEW") ? (
+              <div className="rounded-2xl border bg-muted/40 p-5">
+                <h2 className="font-medium">Permission management</h2>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Open the permissions page to create or edit permission codes.
+                </p>
+                <Link
+                  href="/dashboard/permissions"
+                  className="mt-3 inline-flex text-sm underline underline-offset-4"
+                >
+                  Go to permissions
+                </Link>
+              </div>
+            ) : null}
           </div>
 
           <div className="mt-8 flex flex-wrap gap-3">
