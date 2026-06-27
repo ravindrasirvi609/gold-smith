@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { LogoutButton } from "@/components/auth/logout-button";
-import { getSession } from "@/lib/auth";
+import { getSession, hasPermission } from "@/lib/auth";
 
 export default async function DashboardPage() {
   const session = await getSession();
@@ -54,6 +54,20 @@ export default async function DashboardPage() {
                 place.
               </p>
             </div>
+            {hasPermission(session, "USER_VIEW") ? (
+              <div className="rounded-2xl border bg-muted/40 p-5">
+                <h2 className="font-medium">User management</h2>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Open the users page to create or edit users.
+                </p>
+                <Link
+                  href="/dashboard/users"
+                  className="mt-3 inline-flex text-sm underline underline-offset-4"
+                >
+                  Go to users
+                </Link>
+              </div>
+            ) : null}
           </div>
 
           <div className="mt-8 flex flex-wrap gap-3">

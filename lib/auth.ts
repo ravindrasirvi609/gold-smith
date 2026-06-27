@@ -43,6 +43,15 @@ export function verifyJwt(token: string) {
   };
 }
 
+export type AuthSession = {
+  userId: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: { id: string; name: string };
+  permissions: string[];
+};
+
 export async function createSessionRecord(input: {
   userId: string;
   email: string;
@@ -110,5 +119,12 @@ export async function getSession() {
     lastName: payload.lastName,
     role: payload.role,
     permissions: payload.permissions,
-  };
+  } satisfies AuthSession;
+}
+
+export function hasPermission(
+  session: AuthSession | null,
+  permission: string
+) {
+  return Boolean(session?.permissions.includes(permission));
 }
