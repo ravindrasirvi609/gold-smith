@@ -96,6 +96,48 @@ export default async function DashboardPage() {
                 </Link>
               </div>
             ) : null}
+            {hasPermission(session, "VENDOR_VIEW") ? (
+              <div className="rounded-2xl border bg-muted/40 p-5">
+                <h2 className="font-medium">Vendor management</h2>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Open the vendor master to keep purchase suppliers ready.
+                </p>
+                <Link
+                  href="/dashboard/vendors"
+                  className="mt-3 inline-flex text-sm underline underline-offset-4"
+                >
+                  Go to vendors
+                </Link>
+              </div>
+            ) : null}
+            {hasPermission(session, "CUSTOMER_VIEW") ? (
+              <div className="rounded-2xl border bg-muted/40 p-5">
+                <h2 className="font-medium">Customer management</h2>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Open the customer master for billing and approval records.
+                </p>
+                <Link
+                  href="/dashboard/customers"
+                  className="mt-3 inline-flex text-sm underline underline-offset-4"
+                >
+                  Go to customers
+                </Link>
+              </div>
+            ) : null}
+            {hasPermission(session, "KARIGAR_VIEW") ? (
+              <div className="rounded-2xl border bg-muted/40 p-5">
+                <h2 className="font-medium">Karigar management</h2>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Open the karigar master for issue, receipt, and labour tracking.
+                </p>
+                <Link
+                  href="/dashboard/karigars"
+                  className="mt-3 inline-flex text-sm underline underline-offset-4"
+                >
+                  Go to karigars
+                </Link>
+              </div>
+            ) : null}
           </div>
 
           <div className="mt-8 flex flex-wrap gap-3">

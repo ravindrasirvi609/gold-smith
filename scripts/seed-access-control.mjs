@@ -80,6 +80,78 @@ const permissions = [
     code: "PERMISSION_DELETE",
     description: "Can delete permissions",
   },
+  {
+    module: "Vendor",
+    action: "View",
+    code: "VENDOR_VIEW",
+    description: "Can view vendors",
+  },
+  {
+    module: "Vendor",
+    action: "Create",
+    code: "VENDOR_CREATE",
+    description: "Can create vendors",
+  },
+  {
+    module: "Vendor",
+    action: "Edit",
+    code: "VENDOR_EDIT",
+    description: "Can edit vendors",
+  },
+  {
+    module: "Vendor",
+    action: "Delete",
+    code: "VENDOR_DELETE",
+    description: "Can delete vendors",
+  },
+  {
+    module: "Customer",
+    action: "View",
+    code: "CUSTOMER_VIEW",
+    description: "Can view customers",
+  },
+  {
+    module: "Customer",
+    action: "Create",
+    code: "CUSTOMER_CREATE",
+    description: "Can create customers",
+  },
+  {
+    module: "Customer",
+    action: "Edit",
+    code: "CUSTOMER_EDIT",
+    description: "Can edit customers",
+  },
+  {
+    module: "Customer",
+    action: "Delete",
+    code: "CUSTOMER_DELETE",
+    description: "Can delete customers",
+  },
+  {
+    module: "Karigar",
+    action: "View",
+    code: "KARIGAR_VIEW",
+    description: "Can view karigars",
+  },
+  {
+    module: "Karigar",
+    action: "Create",
+    code: "KARIGAR_CREATE",
+    description: "Can create karigars",
+  },
+  {
+    module: "Karigar",
+    action: "Edit",
+    code: "KARIGAR_EDIT",
+    description: "Can edit karigars",
+  },
+  {
+    module: "Karigar",
+    action: "Delete",
+    code: "KARIGAR_DELETE",
+    description: "Can delete karigars",
+  },
 ];
 
 const rolePermissionCodes = {
@@ -95,10 +167,19 @@ const rolePermissionCodes = {
     "PERMISSION_VIEW",
     "PERMISSION_CREATE",
     "PERMISSION_EDIT",
+    "VENDOR_VIEW",
+    "VENDOR_CREATE",
+    "VENDOR_EDIT",
+    "CUSTOMER_VIEW",
+    "CUSTOMER_CREATE",
+    "CUSTOMER_EDIT",
+    "KARIGAR_VIEW",
+    "KARIGAR_CREATE",
+    "KARIGAR_EDIT",
   ],
-  Manager: ["DASHBOARD_VIEW", "USER_VIEW", "PERMISSION_VIEW"],
-  "Inventory Executive": ["DASHBOARD_VIEW", "USER_VIEW", "PERMISSION_VIEW"],
-  "Sales Executive": ["DASHBOARD_VIEW", "USER_VIEW", "PERMISSION_VIEW"],
+  Manager: ["DASHBOARD_VIEW", "USER_VIEW", "PERMISSION_VIEW", "VENDOR_VIEW", "CUSTOMER_VIEW", "KARIGAR_VIEW"],
+  "Inventory Executive": ["DASHBOARD_VIEW", "USER_VIEW", "PERMISSION_VIEW", "VENDOR_VIEW", "KARIGAR_VIEW"],
+  "Sales Executive": ["DASHBOARD_VIEW", "USER_VIEW", "PERMISSION_VIEW", "CUSTOMER_VIEW"],
 };
 
 const roles = [
