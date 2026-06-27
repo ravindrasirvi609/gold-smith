@@ -1,0 +1,399 @@
+import { ObjectId } from "mongodb";
+import { getDb } from "@/lib/mongodb";
+
+export type PurchaseStatus = "DRAFT" | "COMPLETED" | "CANCELLED";
+
+export type GoldPurchaseItem = {
+  purity: string;
+  grossWeight: string;
+  pureWeight: string;
+  ratePerGram: string;
+  amount: string;
+};
+
+export type DiamondPurchaseItem = {
+  sieveSize: string;
+  shape: string;
+  color: string;
+  clarity: string;
+  pcs: string;
+  carat: string;
+  ratePerCarat: string;
+  amount: string;
+};
+
+export type GoldPurchaseListItem = {
+  id: string;
+  purchaseNo: string;
+  vendorName: string;
+  invoiceNo: string;
+  invoiceDate: string;
+  purchaseDate: string;
+  subtotal: string;
+  gst: string;
+  total: string;
+  status: PurchaseStatus;
+};
+
+export type DiamondPurchaseListItem = {
+  id: string;
+  purchaseNo: string;
+  vendorName: string;
+  invoiceNo: string;
+  invoiceDate: string;
+  purchaseDate: string;
+  subtotal: string;
+  gst: string;
+  total: string;
+  status: PurchaseStatus;
+};
+
+export type GoldPurchaseFormValues = {
+  vendorId: string;
+  invoiceNo: string;
+  invoiceDate: string;
+  purchaseDate: string;
+  items: GoldPurchaseItem[];
+  gst: string;
+  otherCharges: string;
+  remarks: string;
+  status: PurchaseStatus;
+};
+
+export type DiamondPurchaseFormValues = {
+  vendorId: string;
+  invoiceNo: string;
+  invoiceDate: string;
+  purchaseDate: string;
+  items: DiamondPurchaseItem[];
+  gst: string;
+  otherCharges: string;
+  remarks: string;
+  status: PurchaseStatus;
+};
+
+function toObjectId(id: string) {
+  if (!ObjectId.isValid(id)) throw new Error("Invalid id.");
+  return new ObjectId(id);
+}
+
+function asString(value: unknown) {
+  return String(value ?? "");
+}
+
+function num(value: string) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+async function nextSequence(collectionName: string, prefix: string) {
+  const db = await getDb();
+  const latest = await db.collection(collectionName).find({}).sort({ purchaseNo: -1 }).limit(1).toArray();
+  const number = Number(asString(latest[0]?.purchaseNo ?? `${prefix}0000`).replace(/\D/g, "")) || 0;
+  return `${prefix}${String(number + 1).padStart(4, "0")}`;
+}
+
+export async function getGoldPurchases() {
+  const db = await getDb();
+  const purchases = await db
+    .collection("goldPurchases")
+    .aggregate([
+      { $lookup: { from: "vendors", localField: "vendorId", foreignField: "_id", as: "vendorDoc" } },
+      { $unwind: { path: "$vendorDoc", preserveNullAndEmptyArrays: true } },
+      { $sort: { createdAt: -1 } },
+    ])
+    .toArray();
+
+  return purchases.map(
+    (purchase) =>
+      ({
+        id: asString(purchase._id),
+        purchaseNo: asString(purchase.purchaseNo ?? ""),
+        vendorName: asString(purchase.vendorDoc?.companyName ?? purchase.vendorDoc?.ownerName ?? "Unknown"),
+        invoiceNo: asString(purchase.invoiceNo ?? ""),
+        invoiceDate: asString(purchase.invoiceDate ?? ""),
+        purchaseDate: asString(purchase.purchaseDate ?? ""),
+        subtotal: asString(purchase.subtotal ?? "0"),
+        gst: asString(purchase.gst ?? "0"),
+        total: asString(purchase.total ?? "0"),
+        status: (purchase.status ?? "DRAFT") as PurchaseStatus,
+      }) satisfies GoldPurchaseListItem
+  );
+}
+
+export async function getDiamondPurchases() {
+  const db = await getDb();
+  const purchases = await db
+    .collection("diamondPurchases")
+    .aggregate([
+      { $lookup: { from: "vendors", localField: "vendorId", foreignField: "_id", as: "vendorDoc" } },
+      { $unwind: { path: "$vendorDoc", preserveNullAndEmptyArrays: true } },
+      { $sort: { createdAt: -1 } },
+    ])
+    .toArray();
+
+  return purchases.map(
+    (purchase) =>
+      ({
+        id: asString(purchase._id),
+        purchaseNo: asString(purchase.purchaseNo ?? ""),
+        vendorName: asString(purchase.vendorDoc?.companyName ?? purchase.vendorDoc?.ownerName ?? "Unknown"),
+        invoiceNo: asString(purchase.invoiceNo ?? ""),
+        invoiceDate: asString(purchase.invoiceDate ?? ""),
+        purchaseDate: asString(purchase.purchaseDate ?? ""),
+        subtotal: asString(purchase.subtotal ?? "0"),
+        gst: asString(purchase.gst ?? "0"),
+        total: asString(purchase.total ?? "0"),
+        status: (purchase.status ?? "DRAFT") as PurchaseStatus,
+      }) satisfies DiamondPurchaseListItem
+  );
+}
+
+export async function getGoldPurchaseById(id: string) {
+  const db = await getDb();
+  const purchase = await db.collection("goldPurchases").findOne({ _id: toObjectId(id) });
+  if (!purchase) return null;
+  return {
+    id: asString(purchase._id),
+    vendorId: asString(purchase.vendorId ?? ""),
+    invoiceNo: asString(purchase.invoiceNo ?? ""),
+    invoiceDate: asString(purchase.invoiceDate ?? ""),
+    purchaseDate: asString(purchase.purchaseDate ?? ""),
+    items: Array.isArray(purchase.items) ? purchase.items : [],
+    gst: asString(purchase.gst ?? "0"),
+    otherCharges: asString(purchase.otherCharges ?? "0"),
+    remarks: asString(purchase.remarks ?? ""),
+    status: (purchase.status ?? "DRAFT") as PurchaseStatus,
+  } satisfies GoldPurchaseFormValues & { id: string };
+}
+
+export async function getDiamondPurchaseById(id: string) {
+  const db = await getDb();
+  const purchase = await db.collection("diamondPurchases").findOne({ _id: toObjectId(id) });
+  if (!purchase) return null;
+  return {
+    id: asString(purchase._id),
+    vendorId: asString(purchase.vendorId ?? ""),
+    invoiceNo: asString(purchase.invoiceNo ?? ""),
+    invoiceDate: asString(purchase.invoiceDate ?? ""),
+    purchaseDate: asString(purchase.purchaseDate ?? ""),
+    items: Array.isArray(purchase.items) ? purchase.items : [],
+    gst: asString(purchase.gst ?? "0"),
+    otherCharges: asString(purchase.otherCharges ?? "0"),
+    remarks: asString(purchase.remarks ?? ""),
+    status: (purchase.status ?? "DRAFT") as PurchaseStatus,
+  } satisfies DiamondPurchaseFormValues & { id: string };
+}
+
+async function getVendorIdForPurchase(vendorId: string, allowedTypes: string[]) {
+  const db = await getDb();
+  if (!ObjectId.isValid(vendorId)) throw new Error("Please select a valid vendor.");
+  const vendor = await db.collection("vendors").findOne({ _id: new ObjectId(vendorId), status: "ACTIVE" });
+  if (!vendor) throw new Error("Selected vendor does not exist or is inactive.");
+  if (!allowedTypes.includes(asString(vendor.vendorType ?? ""))) {
+    throw new Error("Selected vendor is not valid for this purchase type.");
+  }
+  return { vendorId: new ObjectId(vendorId), vendorName: asString(vendor.companyName ?? vendor.ownerName ?? "") };
+}
+
+async function syncGoldLedger(purchaseId: ObjectId, purchaseNo: string, items: GoldPurchaseItem[], status: PurchaseStatus, purchaseDate: string, remarks: string, createdBy?: string) {
+  const db = await getDb();
+  await db.collection("goldInventoryLedger").deleteMany({ referenceType: "GoldPurchase", referenceId: purchaseId });
+  if (status !== "COMPLETED") return;
+  const lastEntry = await db.collection("goldInventoryLedger").find({}).sort({ createdAt: -1 }).limit(1).toArray();
+  let balanceAfter = num(asString(lastEntry[0]?.balanceAfterTransaction ?? "0"));
+  const now = new Date();
+  const entries = items.map((item) => {
+    const inWeight = num(item.pureWeight);
+    balanceAfter += inWeight;
+    return {
+      transactionDate: new Date(purchaseDate || now.toISOString()),
+      transactionType: "PURCHASE",
+      referenceType: "GoldPurchase",
+      referenceId: purchaseId,
+      referenceNo: purchaseNo,
+      purity: asString(item.purity),
+      grossWeight: asString(item.grossWeight),
+      pureWeight: asString(item.pureWeight),
+      inWeight,
+      outWeight: 0,
+      balanceAfterTransaction: balanceAfter,
+      remarks,
+      createdBy: createdBy ? new ObjectId(createdBy) : null,
+      createdAt: now,
+      updatedAt: now,
+    };
+  });
+  if (entries.length) await db.collection("goldInventoryLedger").insertMany(entries);
+}
+
+async function syncDiamondLedger(purchaseId: ObjectId, purchaseNo: string, items: DiamondPurchaseItem[], status: PurchaseStatus, purchaseDate: string, remarks: string, createdBy?: string) {
+  const db = await getDb();
+  await db.collection("diamondInventoryLedger").deleteMany({ referenceType: "DiamondPurchase", referenceId: purchaseId });
+  if (status !== "COMPLETED") return;
+  const lastEntry = await db.collection("diamondInventoryLedger").find({}).sort({ createdAt: -1 }).limit(1).toArray();
+  let balancePcs = num(asString(lastEntry[0]?.balancePcs ?? "0"));
+  let balanceCarat = num(asString(lastEntry[0]?.balanceCarat ?? "0"));
+  const now = new Date();
+  const entries = items.map((item) => {
+    const pcsIn = num(item.pcs);
+    const caratIn = num(item.carat);
+    balancePcs += pcsIn;
+    balanceCarat += caratIn;
+    return {
+      transactionDate: new Date(purchaseDate || now.toISOString()),
+      transactionType: "PURCHASE",
+      referenceType: "DiamondPurchase",
+      referenceId: purchaseId,
+      referenceNo: purchaseNo,
+      sieveSize: asString(item.sieveSize),
+      shape: asString(item.shape),
+      color: asString(item.color),
+      clarity: asString(item.clarity),
+      pcsIn,
+      pcsOut: 0,
+      caratIn,
+      caratOut: 0,
+      balancePcs,
+      balanceCarat,
+      remarks,
+      createdBy: createdBy ? new ObjectId(createdBy) : null,
+      createdAt: now,
+      updatedAt: now,
+    };
+  });
+  if (entries.length) await db.collection("diamondInventoryLedger").insertMany(entries);
+}
+
+export async function createGoldPurchase(input: GoldPurchaseFormValues, createdBy?: string) {
+  const db = await getDb();
+  const { vendorId } = await getVendorIdForPurchase(input.vendorId, ["GOLD", "BOTH"]);
+  const purchaseNo = await nextSequence("goldPurchases", "GP");
+  const now = new Date();
+  const subtotal = input.items.reduce((sum, item) => sum + num(item.amount), 0);
+  const total = subtotal + num(input.gst) + num(input.otherCharges);
+  const result = await db.collection("goldPurchases").insertOne({
+    purchaseNo,
+    vendorId,
+    invoiceNo: asString(input.invoiceNo).trim(),
+    invoiceDate: asString(input.invoiceDate).trim(),
+    purchaseDate: asString(input.purchaseDate).trim(),
+    items: input.items,
+    subtotal: subtotal.toFixed(2),
+    gst: asString(input.gst),
+    otherCharges: asString(input.otherCharges),
+    total: total.toFixed(2),
+    paymentStatus: "PENDING",
+    remarks: asString(input.remarks),
+    status: input.status,
+    createdBy: createdBy ? new ObjectId(createdBy) : null,
+    updatedBy: createdBy ? new ObjectId(createdBy) : null,
+    createdAt: now,
+    updatedAt: now,
+  });
+  await syncGoldLedger(result.insertedId, purchaseNo, input.items, input.status, input.purchaseDate, input.remarks, createdBy);
+  return { id: String(result.insertedId) };
+}
+
+export async function updateGoldPurchase(id: string, input: GoldPurchaseFormValues, updatedBy?: string) {
+  const db = await getDb();
+  const purchaseId = toObjectId(id);
+  const existing = await db.collection("goldPurchases").findOne({ _id: purchaseId });
+  if (!existing) throw new Error("Gold purchase not found.");
+  const { vendorId } = await getVendorIdForPurchase(input.vendorId, ["GOLD", "BOTH"]);
+  const subtotal = input.items.reduce((sum, item) => sum + num(item.amount), 0);
+  const total = subtotal + num(input.gst) + num(input.otherCharges);
+  await db.collection("goldPurchases").updateOne(
+    { _id: purchaseId },
+    { $set: { vendorId, invoiceNo: asString(input.invoiceNo).trim(), invoiceDate: asString(input.invoiceDate).trim(), purchaseDate: asString(input.purchaseDate).trim(), items: input.items, subtotal: subtotal.toFixed(2), gst: asString(input.gst), otherCharges: asString(input.otherCharges), total: total.toFixed(2), remarks: asString(input.remarks), status: input.status, updatedBy: updatedBy ? new ObjectId(updatedBy) : null, updatedAt: new Date() } }
+  );
+  await syncGoldLedger(purchaseId, asString(existing.purchaseNo ?? ""), input.items, input.status, input.purchaseDate, input.remarks, updatedBy);
+  return { id };
+}
+
+export async function deleteGoldPurchase(id: string) {
+  const db = await getDb();
+  const purchaseId = toObjectId(id);
+  const existing = await db.collection("goldPurchases").findOne({ _id: purchaseId });
+  if (!existing) throw new Error("Gold purchase not found.");
+  await db.collection("goldInventoryLedger").deleteMany({ referenceType: "GoldPurchase", referenceId: purchaseId });
+  await db.collection("goldPurchases").deleteOne({ _id: purchaseId });
+  return { id };
+}
+
+export async function createDiamondPurchase(input: DiamondPurchaseFormValues, createdBy?: string) {
+  const db = await getDb();
+  const { vendorId } = await getVendorIdForPurchase(input.vendorId, ["DIAMOND", "BOTH"]);
+  const purchaseNo = await nextSequence("diamondPurchases", "DP");
+  const now = new Date();
+  const subtotal = input.items.reduce((sum, item) => sum + num(item.amount), 0);
+  const total = subtotal + num(input.gst) + num(input.otherCharges);
+  const result = await db.collection("diamondPurchases").insertOne({
+    purchaseNo,
+    vendorId,
+    invoiceNo: asString(input.invoiceNo).trim(),
+    invoiceDate: asString(input.invoiceDate).trim(),
+    purchaseDate: asString(input.purchaseDate).trim(),
+    items: input.items,
+    subtotal: subtotal.toFixed(2),
+    gst: asString(input.gst),
+    otherCharges: asString(input.otherCharges),
+    total: total.toFixed(2),
+    remarks: asString(input.remarks),
+    status: input.status,
+    createdBy: createdBy ? new ObjectId(createdBy) : null,
+    updatedBy: createdBy ? new ObjectId(createdBy) : null,
+    createdAt: now,
+    updatedAt: now,
+  });
+  await syncDiamondLedger(result.insertedId, purchaseNo, input.items, input.status, input.purchaseDate, input.remarks, createdBy);
+  return { id: String(result.insertedId) };
+}
+
+export async function updateDiamondPurchase(id: string, input: DiamondPurchaseFormValues, updatedBy?: string) {
+  const db = await getDb();
+  const purchaseId = toObjectId(id);
+  const existing = await db.collection("diamondPurchases").findOne({ _id: purchaseId });
+  if (!existing) throw new Error("Diamond purchase not found.");
+  const { vendorId } = await getVendorIdForPurchase(input.vendorId, ["DIAMOND", "BOTH"]);
+  const subtotal = input.items.reduce((sum, item) => sum + num(item.amount), 0);
+  const total = subtotal + num(input.gst) + num(input.otherCharges);
+  await db.collection("diamondPurchases").updateOne(
+    { _id: purchaseId },
+    { $set: { vendorId, invoiceNo: asString(input.invoiceNo).trim(), invoiceDate: asString(input.invoiceDate).trim(), purchaseDate: asString(input.purchaseDate).trim(), items: input.items, subtotal: subtotal.toFixed(2), gst: asString(input.gst), otherCharges: asString(input.otherCharges), total: total.toFixed(2), remarks: asString(input.remarks), status: input.status, updatedBy: updatedBy ? new ObjectId(updatedBy) : null, updatedAt: new Date() } }
+  );
+  await syncDiamondLedger(purchaseId, asString(existing.purchaseNo ?? ""), input.items, input.status, input.purchaseDate, input.remarks, updatedBy);
+  return { id };
+}
+
+export async function deleteDiamondPurchase(id: string) {
+  const db = await getDb();
+  const purchaseId = toObjectId(id);
+  const existing = await db.collection("diamondPurchases").findOne({ _id: purchaseId });
+  if (!existing) throw new Error("Diamond purchase not found.");
+  await db.collection("diamondInventoryLedger").deleteMany({ referenceType: "DiamondPurchase", referenceId: purchaseId });
+  await db.collection("diamondPurchases").deleteOne({ _id: purchaseId });
+  return { id };
+}
+
+export async function getGoldInventorySummary() {
+  const db = await getDb();
+  const totals = await db.collection("goldInventoryLedger").aggregate([{ $group: { _id: null, totalIn: { $sum: "$inWeight" }, totalOut: { $sum: "$outWeight" }, currentStock: { $sum: "$balanceAfterTransaction" } } }]).toArray();
+  return totals[0] ?? { totalIn: 0, totalOut: 0, currentStock: 0 };
+}
+
+export async function getDiamondInventorySummary() {
+  const db = await getDb();
+  const totals = await db.collection("diamondInventoryLedger").aggregate([{ $group: { _id: null, totalPcsIn: { $sum: "$pcsIn" }, totalPcsOut: { $sum: "$pcsOut" }, totalCaratIn: { $sum: "$caratIn" }, totalCaratOut: { $sum: "$caratOut" }, currentPcs: { $sum: "$balancePcs" }, currentCarat: { $sum: "$balanceCarat" } } }]).toArray();
+  return totals[0] ?? { totalPcsIn: 0, totalPcsOut: 0, totalCaratIn: 0, totalCaratOut: 0, currentPcs: 0, currentCarat: 0 };
+}
+
+export async function getGoldLedgerEntries() {
+  const db = await getDb();
+  return db.collection("goldInventoryLedger").find({}).sort({ transactionDate: -1, createdAt: -1 }).limit(100).toArray();
+}
+
+export async function getDiamondLedgerEntries() {
+  const db = await getDb();
+  return db.collection("diamondInventoryLedger").find({}).sort({ transactionDate: -1, createdAt: -1 }).limit(100).toArray();
+}

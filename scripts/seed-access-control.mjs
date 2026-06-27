@@ -152,6 +152,30 @@ const permissions = [
     code: "KARIGAR_DELETE",
     description: "Can delete karigars",
   },
+  {
+    module: "Purchase",
+    action: "View",
+    code: "PURCHASE_VIEW",
+    description: "Can view purchases",
+  },
+  {
+    module: "Purchase",
+    action: "Create",
+    code: "PURCHASE_CREATE",
+    description: "Can create purchases",
+  },
+  {
+    module: "Purchase",
+    action: "Edit",
+    code: "PURCHASE_EDIT",
+    description: "Can edit purchases",
+  },
+  {
+    module: "Purchase",
+    action: "Delete",
+    code: "PURCHASE_DELETE",
+    description: "Can delete purchases",
+  },
 ];
 
 const rolePermissionCodes = {
@@ -176,9 +200,12 @@ const rolePermissionCodes = {
     "KARIGAR_VIEW",
     "KARIGAR_CREATE",
     "KARIGAR_EDIT",
+    "PURCHASE_VIEW",
+    "PURCHASE_CREATE",
+    "PURCHASE_EDIT",
   ],
-  Manager: ["DASHBOARD_VIEW", "USER_VIEW", "PERMISSION_VIEW", "VENDOR_VIEW", "CUSTOMER_VIEW", "KARIGAR_VIEW"],
-  "Inventory Executive": ["DASHBOARD_VIEW", "USER_VIEW", "PERMISSION_VIEW", "VENDOR_VIEW", "KARIGAR_VIEW"],
+  Manager: ["DASHBOARD_VIEW", "USER_VIEW", "PERMISSION_VIEW", "VENDOR_VIEW", "CUSTOMER_VIEW", "KARIGAR_VIEW", "PURCHASE_VIEW"],
+  "Inventory Executive": ["DASHBOARD_VIEW", "USER_VIEW", "PERMISSION_VIEW", "VENDOR_VIEW", "KARIGAR_VIEW", "PURCHASE_VIEW", "PURCHASE_CREATE", "PURCHASE_EDIT"],
   "Sales Executive": ["DASHBOARD_VIEW", "USER_VIEW", "PERMISSION_VIEW", "CUSTOMER_VIEW"],
 };
 

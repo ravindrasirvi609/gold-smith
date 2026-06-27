@@ -138,6 +138,20 @@ export default async function DashboardPage() {
                 </Link>
               </div>
             ) : null}
+            {hasPermission(session, "PURCHASE_VIEW") ? (
+              <div className="rounded-2xl border bg-muted/40 p-5">
+                <h2 className="font-medium">Purchase & inventory</h2>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Track gold and diamond purchases with ledger-backed stock.
+                </p>
+                <Link
+                  href="/dashboard/inventory"
+                  className="mt-3 inline-flex text-sm underline underline-offset-4"
+                >
+                  Go to inventory
+                </Link>
+              </div>
+            ) : null}
           </div>
 
           <div className="mt-8 flex flex-wrap gap-3">
