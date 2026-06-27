@@ -166,6 +166,20 @@ export default async function DashboardPage() {
                 </Link>
               </div>
             ) : null}
+            {hasPermission(session, "APPROVAL_VIEW") ? (
+              <div className="rounded-2xl border bg-muted/40 p-5">
+                <h2 className="font-medium">Sales & finance</h2>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Manage approvals, invoices, payments, settings, and audit logs.
+                </p>
+                <Link
+                  href="/dashboard/sales"
+                  className="mt-3 inline-flex text-sm underline underline-offset-4"
+                >
+                  Go to sales
+                </Link>
+              </div>
+            ) : null}
           </div>
 
           <div className="mt-8 flex flex-wrap gap-3">
