@@ -152,6 +152,20 @@ export default async function DashboardPage() {
                 </Link>
               </div>
             ) : null}
+            {hasPermission(session, "ISSUE_VIEW") ? (
+              <div className="rounded-2xl border bg-muted/40 p-5">
+                <h2 className="font-medium">Manufacturing</h2>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Manage karigar issue, receipt, products, and history.
+                </p>
+                <Link
+                  href="/dashboard/manufacturing"
+                  className="mt-3 inline-flex text-sm underline underline-offset-4"
+                >
+                  Go to manufacturing
+                </Link>
+              </div>
+            ) : null}
           </div>
 
           <div className="mt-8 flex flex-wrap gap-3">
