@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -39,14 +39,13 @@ export function SiteDesktopNavigation() {
 
 export function SiteMobileNavigation() {
   const pathname = usePathname();
+  const router = useRouter();
 
   return (
     <div className="md:hidden">
       <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <button className="inline-flex h-10 items-center justify-center rounded-full border border-border bg-card px-4 text-sm font-medium transition-colors hover:bg-muted">
-            Menu
-          </button>
+        <DropdownMenuTrigger className="inline-flex h-10 items-center justify-center rounded-full border border-border bg-card px-4 text-sm font-medium transition-colors hover:bg-muted">
+          Menu
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="min-w-48">
           {siteNavigation.map((item) => {
@@ -54,16 +53,18 @@ export function SiteMobileNavigation() {
               pathname === item.href || pathname.startsWith(`${item.href}/`);
 
             return (
-              <DropdownMenuItem key={item.href} asChild>
-                <Link
-                  href={item.href}
+              <DropdownMenuItem
+                key={item.href}
+                onSelect={() => router.push(item.href)}
+              >
+                <span
                   className={cn(
                     "flex w-full items-center rounded-md px-2 py-1.5 text-sm",
                     active && "bg-accent text-accent-foreground"
                   )}
                 >
                   {item.label}
-                </Link>
+                </span>
               </DropdownMenuItem>
             );
           })}
