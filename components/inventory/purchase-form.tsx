@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { FileUpload } from "@/components/ui/file-upload";
 
 type GoldItem = { purity: string; grossWeight: string; pureWeight: string; ratePerGram: string; amount: string };
 type DiamondItem = { sieveSize: string; shape: string; color: string; clarity: string; pcs: string; carat: string; ratePerCarat: string; amount: string };
@@ -23,6 +24,7 @@ type PurchaseInitialValues = {
   otherCharges?: string;
   remarks?: string;
   status?: string;
+  invoiceFileUrl?: string;
 };
 
 type Props = {
@@ -100,6 +102,7 @@ export function PurchaseForm({ mode, actionUrl, purchaseType, vendors, initialVa
             <div className="space-y-2"><Label htmlFor="purchaseDate">Purchase date</Label><Input id="purchaseDate" name="purchaseDate" type="date" value={formValues.purchaseDate} onChange={(e) => setFormValues((c) => ({ ...c, purchaseDate: e.target.value }))} /></div>
             <div className="space-y-2"><Label htmlFor="gst">GST</Label><Input id="gst" name="gst" value={formValues.gst} onChange={(e) => setFormValues((c) => ({ ...c, gst: e.target.value }))} /></div>
             <div className="space-y-2"><Label htmlFor="otherCharges">Other charges</Label><Input id="otherCharges" name="otherCharges" value={formValues.otherCharges} onChange={(e) => setFormValues((c) => ({ ...c, otherCharges: e.target.value }))} /></div>
+            <div className="md:col-span-2"><FileUpload kind={purchaseType === "gold" ? "gold-purchases" : "diamond-purchases"} variant="document" name="invoiceFileUrl" label="Invoice scan" initialUrl={initialValues?.invoiceFileUrl} /></div>
           </div>
           <input type="hidden" name="items" value={JSON.stringify(items)} />
           <div className="space-y-3 rounded-2xl border p-4">

@@ -16,6 +16,7 @@ export async function POST(request: Request) {
       diamonds: JSON.parse(String(formData.get("diamonds") ?? "[]")),
       notes: String(formData.get("notes") ?? ""),
       status: String(formData.get("status") ?? "DRAFT") as IssueStatus,
+      challanUrl: String(formData.get("challanUrl") ?? ""),
     }, session.userId);
     return NextResponse.json({ ok: true, id: result.id });
   } catch (error) {

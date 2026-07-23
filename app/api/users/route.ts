@@ -20,6 +20,7 @@ export async function POST(request: Request) {
         password: String(formData.get("password") ?? ""),
         roleId: String(formData.get("roleId") ?? ""),
         status: (String(formData.get("status") ?? "ACTIVE") as "ACTIVE" | "INACTIVE" | "BLOCKED"),
+        profileImage: String(formData.get("profileImage") ?? ""),
       },
       session.userId
     );

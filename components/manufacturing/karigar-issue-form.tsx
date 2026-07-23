@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { FileUpload } from "@/components/ui/file-upload";
 
 type Option = { id: string; name: string };
 type IssueItem = Record<string, string>;
@@ -22,6 +23,7 @@ type Props = {
     diamonds?: IssueItem[];
     notes?: string;
     status?: string;
+    challanUrl?: string;
   };
   canDelete?: boolean;
 };
@@ -84,6 +86,7 @@ export function KarigarIssueForm({ mode, actionUrl, karigars, initialValues, can
             <div className="flex justify-between"><h3 className="font-medium">Diamonds</h3><Button type="button" variant="outline" onClick={() => setDiamonds((c) => [...c, emptyDiamond])}>Add diamond</Button></div>
             {diamonds.map((row, index) => <div key={index} className="grid gap-2 md:grid-cols-4">{["inventoryTransactionId","sieveSize","pcs","carat"].map((key) => <Input key={key} placeholder={key} value={row[key]} onChange={(e) => setDiamonds((current) => current.map((item, i) => i === index ? { ...item, [key]: e.target.value } : item))} />)}</div>)}
           </section>
+          <FileUpload kind="karigar-issues" variant="document" name="challanUrl" label="Challan / work order" initialUrl={initialValues?.challanUrl} />
           <div className="flex flex-wrap gap-3"><Button disabled={loading} type="submit">{loading ? "Saving..." : "Save issue"}</Button><Button type="button" variant="outline" onClick={() => router.back()} disabled={loading}>Cancel</Button>{mode === "edit" && canDelete ? <Button type="button" variant="destructive">Delete issue</Button> : null}</div>
         </form>
       </CardContent>

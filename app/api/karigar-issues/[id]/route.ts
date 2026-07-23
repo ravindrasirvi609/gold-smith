@@ -18,6 +18,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       diamonds: JSON.parse(String(formData.get("diamonds") ?? "[]")),
       notes: String(formData.get("notes") ?? ""),
       status: String(formData.get("status") ?? "DRAFT") as IssueStatus,
+      challanUrl: String(formData.get("challanUrl") ?? ""),
     }, session.userId);
     return NextResponse.json({ ok: true, id });
   } catch (error) {

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { FileUpload } from "@/components/ui/file-upload";
 
 type IssueOption = { id: string; issueNo: string };
 type Props = {
@@ -47,6 +48,10 @@ export function KarigarReceiptForm({ actionUrl, issues }: Props) {
           <div className="space-y-2"><Label>Status</Label><select name="status" className="h-10 w-full rounded-md border px-3 py-2"><option value="PENDING">Pending</option><option value="COMPLETED">Completed</option><option value="REJECTED">Rejected</option></select></div>
           <div className="space-y-2"><Label>Jewellery JSON</Label><textarea name="jewellery" className="min-h-40 w-full rounded-md border px-3 py-2 font-mono text-xs" value={jewelleryJson} onChange={(e) => setJewelleryJson(e.target.value)} /></div>
           <input type="hidden" name="jewellery" value={jewelleryJson} />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <FileUpload kind="karigar-receipts" variant="document" name="signedReceiptUrl" label="Signed receipt" />
+            <FileUpload kind="karigar-receipts" variant="image" name="productImageUrl" label="Product photo (all items)" />
+          </div>
           <div className="flex gap-3"><Button disabled={loading} type="submit">{loading ? "Saving..." : "Save receipt"}</Button><Button type="button" variant="outline" onClick={() => router.back()} disabled={loading}>Cancel</Button></div>
         </form>
       </CardContent>

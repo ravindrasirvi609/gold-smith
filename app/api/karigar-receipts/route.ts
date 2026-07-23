@@ -14,6 +14,8 @@ export async function POST(request: Request) {
       labourType: String(formData.get("labourType") ?? ""),
       jewellery: JSON.parse(String(formData.get("jewellery") ?? "[]")),
       status: String(formData.get("status") ?? "PENDING") as ReceiptStatus,
+      signedReceiptUrl: String(formData.get("signedReceiptUrl") ?? ""),
+      productImageUrl: String(formData.get("productImageUrl") ?? ""),
     }, session.userId);
     return NextResponse.json({ ok: true, id: result.id });
   } catch (error) {

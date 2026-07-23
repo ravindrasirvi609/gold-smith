@@ -17,6 +17,7 @@ export async function POST(request: Request) {
       otherCharges: String(formData.get("otherCharges") ?? "0"),
       remarks: String(formData.get("remarks") ?? ""),
       status: String(formData.get("status") ?? "DRAFT") as PurchaseStatus,
+      invoiceFileUrl: String(formData.get("invoiceFileUrl") ?? ""),
     }, session.userId);
     return NextResponse.json({ ok: true, id: result.id });
   } catch (error) {

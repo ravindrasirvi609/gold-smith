@@ -18,6 +18,7 @@ export async function POST(request: Request) {
       amount: String(formData.get("amount") ?? "0"),
       remarks: String(formData.get("remarks") ?? ""),
       status: "PENDING",
+      attachmentUrl: String(formData.get("attachmentUrl") ?? ""),
     }, session.userId);
     return NextResponse.json({ ok: true, id: result.id });
   } catch (error) {

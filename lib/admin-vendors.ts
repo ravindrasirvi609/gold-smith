@@ -11,6 +11,7 @@ export type VendorListItem = {
   gstNumber: string;
   status: "ACTIVE" | "INACTIVE" | "BLOCKED";
   createdAt: string;
+  logoUrl: string;
 };
 
 export type VendorFormValues = {
@@ -31,6 +32,9 @@ export type VendorFormValues = {
   creditDays: string;
   remarks: string;
   status: "ACTIVE" | "INACTIVE" | "BLOCKED";
+  logoUrl?: string;
+  gstDocUrl?: string;
+  panDocUrl?: string;
 };
 
 function toObjectId(id: string) {
@@ -61,6 +65,7 @@ export async function getVendors() {
         gstNumber: String(vendor.gstNumber ?? ""),
         status: (vendor.status ?? "ACTIVE") as VendorListItem["status"],
         createdAt: vendor.createdAt ? new Date(vendor.createdAt).toISOString() : "",
+        logoUrl: String(vendor.logoUrl ?? ""),
       }) satisfies VendorListItem
   );
 }
@@ -92,6 +97,9 @@ export async function getVendorById(id: string) {
     creditDays: String(vendor.creditDays ?? "0"),
     remarks: String(vendor.remarks ?? ""),
     status: (vendor.status ?? "ACTIVE") as VendorFormValues["status"],
+    logoUrl: String(vendor.logoUrl ?? ""),
+    gstDocUrl: String(vendor.gstDocUrl ?? ""),
+    panDocUrl: String(vendor.panDocUrl ?? ""),
   };
 }
 
@@ -127,6 +135,9 @@ export async function createVendor(input: VendorFormValues) {
     creditDays: normalizeText(input.creditDays),
     remarks: normalizeText(input.remarks),
     status: input.status,
+    logoUrl: normalizeText(input.logoUrl ?? ""),
+    gstDocUrl: normalizeText(input.gstDocUrl ?? ""),
+    panDocUrl: normalizeText(input.panDocUrl ?? ""),
     createdAt: now,
     updatedAt: now,
   });
@@ -164,6 +175,9 @@ export async function updateVendor(id: string, input: VendorFormValues) {
         creditDays: normalizeText(input.creditDays),
         remarks: normalizeText(input.remarks),
         status: input.status,
+        logoUrl: normalizeText(input.logoUrl ?? ""),
+        gstDocUrl: normalizeText(input.gstDocUrl ?? ""),
+        panDocUrl: normalizeText(input.panDocUrl ?? ""),
         updatedAt: new Date(),
       },
     }

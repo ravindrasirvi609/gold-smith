@@ -10,6 +10,7 @@ export type KarigarListItem = {
   pendingIssue: string;
   pendingReceipt: string;
   status: "ACTIVE" | "INACTIVE" | "BLOCKED";
+  photoUrl: string;
 };
 
 export type KarigarFormValues = {
@@ -34,6 +35,9 @@ export type KarigarFormValues = {
   joiningDate: string;
   remarks: string;
   status: "ACTIVE" | "INACTIVE" | "BLOCKED";
+  photoUrl?: string;
+  aadhaarDocUrl?: string;
+  panDocUrl?: string;
 };
 
 function toObjectId(id: string) {
@@ -66,6 +70,7 @@ export async function getKarigars() {
         pendingIssue: String(karigar.pendingIssue ?? "0"),
         pendingReceipt: String(karigar.pendingReceipt ?? "0"),
         status: (karigar.status ?? "ACTIVE") as KarigarListItem["status"],
+        photoUrl: String(karigar.photoUrl ?? ""),
       }) satisfies KarigarListItem
   );
 }
@@ -97,6 +102,9 @@ export async function getKarigarById(id: string) {
     joiningDate: String(karigar.joiningDate ?? ""),
     remarks: String(karigar.remarks ?? ""),
     status: (karigar.status ?? "ACTIVE") as KarigarFormValues["status"],
+    photoUrl: String(karigar.photoUrl ?? ""),
+    aadhaarDocUrl: String(karigar.aadhaarDocUrl ?? ""),
+    panDocUrl: String(karigar.panDocUrl ?? ""),
   };
 }
 
@@ -127,6 +135,9 @@ export async function createKarigar(input: KarigarFormValues) {
     joiningDate: normalizeText(input.joiningDate),
     remarks: normalizeText(input.remarks),
     status: input.status,
+    photoUrl: normalizeText(input.photoUrl ?? ""),
+    aadhaarDocUrl: normalizeText(input.aadhaarDocUrl ?? ""),
+    panDocUrl: normalizeText(input.panDocUrl ?? ""),
     pendingIssue: "0",
     pendingReceipt: "0",
     createdAt: now,
@@ -165,6 +176,9 @@ export async function updateKarigar(id: string, input: KarigarFormValues) {
         joiningDate: normalizeText(input.joiningDate),
         remarks: normalizeText(input.remarks),
         status: input.status,
+        photoUrl: normalizeText(input.photoUrl ?? ""),
+        aadhaarDocUrl: normalizeText(input.aadhaarDocUrl ?? ""),
+        panDocUrl: normalizeText(input.panDocUrl ?? ""),
         updatedAt: new Date(),
       },
     }

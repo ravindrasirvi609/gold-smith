@@ -33,6 +33,7 @@ export type GoldPurchaseListItem = {
   gst: string;
   total: string;
   status: PurchaseStatus;
+  invoiceFileUrl: string;
 };
 
 export type DiamondPurchaseListItem = {
@@ -46,6 +47,7 @@ export type DiamondPurchaseListItem = {
   gst: string;
   total: string;
   status: PurchaseStatus;
+  invoiceFileUrl: string;
 };
 
 export type GoldPurchaseFormValues = {
@@ -58,6 +60,7 @@ export type GoldPurchaseFormValues = {
   otherCharges: string;
   remarks: string;
   status: PurchaseStatus;
+  invoiceFileUrl?: string;
 };
 
 export type DiamondPurchaseFormValues = {
@@ -70,6 +73,7 @@ export type DiamondPurchaseFormValues = {
   otherCharges: string;
   remarks: string;
   status: PurchaseStatus;
+  invoiceFileUrl?: string;
 };
 
 function toObjectId(id: string) {
@@ -117,6 +121,7 @@ export async function getGoldPurchases() {
         gst: asString(purchase.gst ?? "0"),
         total: asString(purchase.total ?? "0"),
         status: (purchase.status ?? "DRAFT") as PurchaseStatus,
+        invoiceFileUrl: asString(purchase.invoiceFileUrl ?? ""),
       }) satisfies GoldPurchaseListItem
   );
 }
@@ -145,6 +150,7 @@ export async function getDiamondPurchases() {
         gst: asString(purchase.gst ?? "0"),
         total: asString(purchase.total ?? "0"),
         status: (purchase.status ?? "DRAFT") as PurchaseStatus,
+        invoiceFileUrl: asString(purchase.invoiceFileUrl ?? ""),
       }) satisfies DiamondPurchaseListItem
   );
 }
@@ -164,6 +170,7 @@ export async function getGoldPurchaseById(id: string) {
     otherCharges: asString(purchase.otherCharges ?? "0"),
     remarks: asString(purchase.remarks ?? ""),
     status: (purchase.status ?? "DRAFT") as PurchaseStatus,
+    invoiceFileUrl: asString(purchase.invoiceFileUrl ?? ""),
   } satisfies GoldPurchaseFormValues & { id: string };
 }
 
@@ -182,6 +189,7 @@ export async function getDiamondPurchaseById(id: string) {
     otherCharges: asString(purchase.otherCharges ?? "0"),
     remarks: asString(purchase.remarks ?? ""),
     status: (purchase.status ?? "DRAFT") as PurchaseStatus,
+    invoiceFileUrl: asString(purchase.invoiceFileUrl ?? ""),
   } satisfies DiamondPurchaseFormValues & { id: string };
 }
 
@@ -286,6 +294,7 @@ export async function createGoldPurchase(input: GoldPurchaseFormValues, createdB
     paymentStatus: "PENDING",
     remarks: asString(input.remarks),
     status: input.status,
+    invoiceFileUrl: asString(input.invoiceFileUrl ?? ""),
     createdBy: createdBy ? new ObjectId(createdBy) : null,
     updatedBy: createdBy ? new ObjectId(createdBy) : null,
     createdAt: now,
@@ -305,7 +314,7 @@ export async function updateGoldPurchase(id: string, input: GoldPurchaseFormValu
   const total = subtotal + num(input.gst) + num(input.otherCharges);
   await db.collection("goldPurchases").updateOne(
     { _id: purchaseId },
-    { $set: { vendorId, invoiceNo: asString(input.invoiceNo).trim(), invoiceDate: asString(input.invoiceDate).trim(), purchaseDate: asString(input.purchaseDate).trim(), items: input.items, subtotal: subtotal.toFixed(2), gst: asString(input.gst), otherCharges: asString(input.otherCharges), total: total.toFixed(2), remarks: asString(input.remarks), status: input.status, updatedBy: updatedBy ? new ObjectId(updatedBy) : null, updatedAt: new Date() } }
+    { $set: { vendorId, invoiceNo: asString(input.invoiceNo).trim(), invoiceDate: asString(input.invoiceDate).trim(), purchaseDate: asString(input.purchaseDate).trim(), items: input.items, subtotal: subtotal.toFixed(2), gst: asString(input.gst), otherCharges: asString(input.otherCharges), total: total.toFixed(2), remarks: asString(input.remarks), status: input.status, invoiceFileUrl: asString(input.invoiceFileUrl ?? ""), updatedBy: updatedBy ? new ObjectId(updatedBy) : null, updatedAt: new Date() } }
   );
   await syncGoldLedger(purchaseId, asString(existing.purchaseNo ?? ""), input.items, input.status, input.purchaseDate, input.remarks, updatedBy);
   return { id };
@@ -341,6 +350,7 @@ export async function createDiamondPurchase(input: DiamondPurchaseFormValues, cr
     total: total.toFixed(2),
     remarks: asString(input.remarks),
     status: input.status,
+    invoiceFileUrl: asString(input.invoiceFileUrl ?? ""),
     createdBy: createdBy ? new ObjectId(createdBy) : null,
     updatedBy: createdBy ? new ObjectId(createdBy) : null,
     createdAt: now,
@@ -360,7 +370,7 @@ export async function updateDiamondPurchase(id: string, input: DiamondPurchaseFo
   const total = subtotal + num(input.gst) + num(input.otherCharges);
   await db.collection("diamondPurchases").updateOne(
     { _id: purchaseId },
-    { $set: { vendorId, invoiceNo: asString(input.invoiceNo).trim(), invoiceDate: asString(input.invoiceDate).trim(), purchaseDate: asString(input.purchaseDate).trim(), items: input.items, subtotal: subtotal.toFixed(2), gst: asString(input.gst), otherCharges: asString(input.otherCharges), total: total.toFixed(2), remarks: asString(input.remarks), status: input.status, updatedBy: updatedBy ? new ObjectId(updatedBy) : null, updatedAt: new Date() } }
+    { $set: { vendorId, invoiceNo: asString(input.invoiceNo).trim(), invoiceDate: asString(input.invoiceDate).trim(), purchaseDate: asString(input.purchaseDate).trim(), items: input.items, subtotal: subtotal.toFixed(2), gst: asString(input.gst), otherCharges: asString(input.otherCharges), total: total.toFixed(2), remarks: asString(input.remarks), status: input.status, invoiceFileUrl: asString(input.invoiceFileUrl ?? ""), updatedBy: updatedBy ? new ObjectId(updatedBy) : null, updatedAt: new Date() } }
   );
   await syncDiamondLedger(purchaseId, asString(existing.purchaseNo ?? ""), input.items, input.status, input.purchaseDate, input.remarks, updatedBy);
   return { id };

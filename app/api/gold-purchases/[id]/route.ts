@@ -8,7 +8,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
   if (!session || !hasPermission(session, "PURCHASE_EDIT")) return NextResponse.json({ ok: false, message: "Forbidden" }, { status: 403 });
   try {
     const { id } = await params; const formData = await request.formData();
-    await updateGoldPurchase(id, { vendorId: String(formData.get("vendorId") ?? ""), invoiceNo: String(formData.get("invoiceNo") ?? ""), invoiceDate: String(formData.get("invoiceDate") ?? ""), purchaseDate: String(formData.get("purchaseDate") ?? ""), items: JSON.parse(String(formData.get("items") ?? "[]")), gst: String(formData.get("gst") ?? "0"), otherCharges: String(formData.get("otherCharges") ?? "0"), remarks: String(formData.get("remarks") ?? ""), status: String(formData.get("status") ?? "DRAFT") as PurchaseStatus }, session.userId);
+    await updateGoldPurchase(id, { vendorId: String(formData.get("vendorId") ?? ""), invoiceNo: String(formData.get("invoiceNo") ?? ""), invoiceDate: String(formData.get("invoiceDate") ?? ""), purchaseDate: String(formData.get("purchaseDate") ?? ""), items: JSON.parse(String(formData.get("items") ?? "[]")), gst: String(formData.get("gst") ?? "0"), otherCharges: String(formData.get("otherCharges") ?? "0"), remarks: String(formData.get("remarks") ?? ""), status: String(formData.get("status") ?? "DRAFT") as PurchaseStatus, invoiceFileUrl: String(formData.get("invoiceFileUrl") ?? "") }, session.userId);
     return NextResponse.json({ ok: true, id });
   } catch (error) { return NextResponse.json({ ok: false, message: error instanceof Error ? error.message : "Unable to update gold purchase." }, { status: 400 }); }
 }

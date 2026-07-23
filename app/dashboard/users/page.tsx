@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getSession, hasPermission } from "@/lib/auth";
 import { getUsers } from "@/lib/admin-users";
 import { Button } from "@/components/ui/button";
+import { EntityAvatar } from "@/components/ui/entity-avatar";
 
 export default async function UsersPage() {
   const session = await getSession();
@@ -38,6 +39,7 @@ export default async function UsersPage() {
           <table className="w-full text-left text-sm">
             <thead className="border-b bg-muted/40 text-muted-foreground">
               <tr>
+                <th className="px-4 py-3 w-12"></th>
                 <th className="px-4 py-3 font-medium">Name</th>
                 <th className="px-4 py-3 font-medium">Email</th>
                 <th className="px-4 py-3 font-medium">Role</th>
@@ -49,6 +51,9 @@ export default async function UsersPage() {
               {users.length ? (
                 users.map((user) => (
                   <tr key={user.id} className="border-b last:border-b-0">
+                    <td className="px-4 py-4">
+                      <EntityAvatar src={user.profileImage} name={[user.firstName, user.lastName].filter(Boolean).join(" ")} />
+                    </td>
                     <td className="px-4 py-4">
                       {user.firstName} {user.lastName}
                     </td>
@@ -73,7 +78,7 @@ export default async function UsersPage() {
                 ))
               ) : (
                 <tr>
-                  <td className="px-4 py-8 text-muted-foreground" colSpan={5}>
+                  <td className="px-4 py-8 text-muted-foreground" colSpan={6}>
                     No users found.
                   </td>
                 </tr>

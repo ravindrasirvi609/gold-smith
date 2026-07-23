@@ -16,6 +16,7 @@ export type UserListItem = {
   roleName: string;
   createdAt: string;
   lastLogin: string | null;
+  profileImage: string | null;
 };
 
 export type UserFormValues = {
@@ -26,6 +27,7 @@ export type UserFormValues = {
   password?: string;
   roleId: string;
   status: "ACTIVE" | "INACTIVE" | "BLOCKED";
+  profileImage?: string;
 };
 
 function toObjectId(id: string) {
@@ -73,6 +75,7 @@ export async function getUsers() {
         roleName: String(user.roleDoc?.name ?? "Unassigned"),
         createdAt: user.createdAt ? new Date(user.createdAt).toISOString() : "",
         lastLogin: user.lastLogin ? new Date(user.lastLogin).toISOString() : null,
+        profileImage: user.profileImage ? String(user.profileImage) : null,
       }) satisfies UserListItem
   );
 }
@@ -93,6 +96,7 @@ export async function getUserById(id: string) {
     mobile: String(user.mobile ?? ""),
     roleId: String(user.role ?? ""),
     status: (user.status ?? "ACTIVE") as UserFormValues["status"],
+    profileImage: user.profileImage ? String(user.profileImage) : null,
   };
 }
 
@@ -138,7 +142,7 @@ export async function createUser(input: UserFormValues, createdBy?: string) {
     mobile: input.mobile.trim(),
     password: passwordHash,
     role: new ObjectId(role._id),
-    profileImage: null,
+    profileImage: input.profileImage?.trim() || null,
     status: input.status,
     lastLogin: null,
     createdBy: createdBy ? new ObjectId(createdBy) : null,
@@ -166,6 +170,7 @@ export async function updateUser(id: string, input: UserFormValues) {
     mobile: input.mobile.trim(),
     role: new ObjectId(role._id),
     status: input.status,
+    profileImage: input.profileImage?.trim() || null,
     updatedAt: new Date(),
   };
 

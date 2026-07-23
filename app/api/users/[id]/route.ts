@@ -25,6 +25,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       password: String(formData.get("password") ?? ""),
       roleId: String(formData.get("roleId") ?? ""),
       status: (String(formData.get("status") ?? "ACTIVE") as "ACTIVE" | "INACTIVE" | "BLOCKED"),
+      profileImage: String(formData.get("profileImage") ?? ""),
     });
 
     return NextResponse.json({ ok: true, id });

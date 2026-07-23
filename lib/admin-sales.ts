@@ -286,6 +286,7 @@ export async function getPayments() {
     paymentType: s(payment.paymentType ?? ""),
     amount: s(payment.amount ?? "0"),
     status: s(payment.status ?? "PENDING") as PaymentStatus,
+    attachmentUrl: s(payment.attachmentUrl ?? ""),
   }));
 }
 
@@ -300,6 +301,7 @@ export async function createPayment(input: {
   amount: string;
   remarks: string;
   status: PaymentStatus;
+  attachmentUrl?: string;
 }, userId?: string) {
   const db = await getDb();
   const paymentNo = await nextNo("payments", "paymentNo", "PAY-");
@@ -316,6 +318,7 @@ export async function createPayment(input: {
     bankName: s(input.bankName),
     amount: s(input.amount),
     remarks: s(input.remarks),
+    attachmentUrl: s(input.attachmentUrl ?? ""),
     receivedBy: userId ? oid(userId) : null,
     status: input.status,
     createdAt: now,

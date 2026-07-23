@@ -25,6 +25,9 @@ export async function POST(request: Request) {
       creditDays: String(formData.get("creditDays") ?? "0"),
       remarks: String(formData.get("remarks") ?? ""),
       status: String(formData.get("status") ?? "ACTIVE") as "ACTIVE" | "INACTIVE" | "BLOCKED",
+      logoUrl: String(formData.get("logoUrl") ?? ""),
+      gstDocUrl: String(formData.get("gstDocUrl") ?? ""),
+      panDocUrl: String(formData.get("panDocUrl") ?? ""),
     });
     return NextResponse.json({ ok: true, id: result.id });
   } catch (error) {

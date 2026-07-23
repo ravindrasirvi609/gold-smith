@@ -132,6 +132,7 @@ export async function getIssueById(id: string) {
     diamonds: Array.isArray(issue.diamonds) ? issue.diamonds : [],
     notes: String(issue.notes ?? ""),
     status: String(issue.status ?? "DRAFT") as IssueStatus,
+    challanUrl: String(issue.challanUrl ?? ""),
   };
 }
 
@@ -144,6 +145,7 @@ export async function createIssue(input: {
   diamonds: IssueDiamondItem[];
   notes: string;
   status: IssueStatus;
+  challanUrl?: string;
 }, createdBy?: string) {
   const db = await getDb();
   if (!ObjectId.isValid(input.karigarId)) throw new Error("Please select a valid karigar.");
@@ -161,6 +163,7 @@ export async function createIssue(input: {
     diamonds: input.diamonds,
     notes: text(input.notes),
     status: input.status,
+    challanUrl: text(input.challanUrl ?? ""),
     issuedBy: createdBy ? oid(createdBy) : null,
     createdAt: now,
     updatedAt: now,
@@ -180,12 +183,13 @@ export async function updateIssue(id: string, input: {
   diamonds: IssueDiamondItem[];
   notes: string;
   status: IssueStatus;
+  challanUrl?: string;
 }, updatedBy?: string) {
   const db = await getDb();
   const issueId = oid(id);
   const existing = await db.collection("karigarIssues").findOne({ _id: issueId });
   if (!existing) throw new Error("Issue not found.");
-  await db.collection("karigarIssues").updateOne({ _id: issueId }, { $set: { karigarId: oid(input.karigarId), issueDate: text(input.issueDate), designReference: text(input.designReference), expectedDeliveryDate: text(input.expectedDeliveryDate), gold: input.gold, diamonds: input.diamonds, notes: text(input.notes), status: input.status, updatedBy: updatedBy ? oid(updatedBy) : null, updatedAt: new Date() } });
+  await db.collection("karigarIssues").updateOne({ _id: issueId }, { $set: { karigarId: oid(input.karigarId), issueDate: text(input.issueDate), designReference: text(input.designReference), expectedDeliveryDate: text(input.expectedDeliveryDate), gold: input.gold, diamonds: input.diamonds, notes: text(input.notes), status: input.status, challanUrl: text(input.challanUrl ?? ""), updatedBy: updatedBy ? oid(updatedBy) : null, updatedAt: new Date() } });
   await db.collection("goldInventoryLedger").deleteMany({ referenceType: "KarigarIssue", referenceId: issueId });
   await db.collection("diamondInventoryLedger").deleteMany({ referenceType: "KarigarIssue", referenceId: issueId });
   if (input.status !== "CANCELLED") await issueStockAdjustments(issueId, String(existing.issueNo ?? ""), input.gold, input.diamonds, input.notes, updatedBy);
@@ -232,10 +236,11 @@ export async function getReceiptById(id: string) {
     labourType: String(receipt.labourType ?? ""),
     jewellery: Array.isArray(receipt.jewellery) ? receipt.jewellery : [],
     status: String(receipt.status ?? "PENDING") as ReceiptStatus,
+    signedReceiptUrl: String(receipt.signedReceiptUrl ?? ""),
   };
 }
 
-async function createProductFromReceipt(receiptId: ObjectId, receiptNo: string, jewel: ReceiptJewelItem, createdBy?: string) {
+async function createProductFromReceipt(receiptId: ObjectId, receiptNo: string, jewel: ReceiptJewelItem, imageUrl: string, createdBy?: string) {
   const db = await getDb();
   const jewelCode = await nextCode("products", "JC");
   const now = new Date();
@@ -256,7 +261,7 @@ async function createProductFromReceipt(receiptId: ObjectId, receiptNo: string, 
     makingCharge: text(jewel.makingCharge),
     labourCharge: "0",
     sellingPrice: "0",
-    image: null,
+    image: imageUrl || null,
     currentLocation: "STORE",
     status: "AVAILABLE" satisfies ProductStatus,
     karigarIssue: null,
@@ -285,6 +290,8 @@ export async function createReceipt(input: {
   labourType: string;
   jewellery: ReceiptJewelItem[];
   status: ReceiptStatus;
+  signedReceiptUrl?: string;
+  productImageUrl?: string;
 }, createdBy?: string) {
   const db = await getDb();
   const issue = await getIssue(input.issueId);
@@ -299,12 +306,13 @@ export async function createReceipt(input: {
     labourType: text(input.labourType),
     jewellery: input.jewellery,
     status: input.status,
+    signedReceiptUrl: text(input.signedReceiptUrl ?? ""),
     receivedBy: createdBy ? oid(createdBy) : null,
     createdAt: now,
     updatedAt: now,
   });
   if (input.status === "COMPLETED") {
-    for (const jewel of input.jewellery) await createProductFromReceipt(result.insertedId, receiptNo, jewel, createdBy);
+    for (const jewel of input.jewellery) await createProductFromReceipt(result.insertedId, receiptNo, jewel, input.productImageUrl ?? "", createdBy);
     await db.collection("karigarIssues").updateOne({ _id: oid(input.issueId) }, { $set: { status: "COMPLETED", updatedAt: now } });
   }
   return { id: String(result.insertedId) };

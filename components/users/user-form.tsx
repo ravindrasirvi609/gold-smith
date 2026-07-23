@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { RoleOption, UserFormValues } from "@/lib/admin-users";
+import { FileUpload } from "@/components/ui/file-upload";
 
 type UserFormProps = {
   mode: "create" | "edit";
@@ -189,6 +190,9 @@ export function UserForm({ mode, actionUrl, roles, initialValues }: UserFormProp
               }
               required={mode === "create"}
             />
+          </div>
+          <div className="md:col-span-2">
+            <FileUpload kind="users" variant="image" name="profileImage" label="Profile photo" initialUrl={initialValues?.profileImage ?? undefined} />
           </div>
           <div className="md:col-span-2 flex flex-wrap gap-3">
             <Button type="submit" disabled={loading}>

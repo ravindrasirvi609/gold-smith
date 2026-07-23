@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { VendorFormValues } from "@/lib/admin-vendors";
+import { FileUpload } from "@/components/ui/file-upload";
 
 type Props = {
   mode: "create" | "edit";
@@ -125,6 +126,11 @@ export function VendorForm({ mode, actionUrl, initialValues, canDelete }: Props)
           <div className="space-y-2 md:col-span-2">
             <Label htmlFor="remarks">Remarks</Label>
             <Input id="remarks" name="remarks" value={formValues.remarks} onChange={(event) => setFormValues((current) => ({ ...current, remarks: event.target.value }))} />
+          </div>
+          <div className="md:col-span-2 grid gap-4 sm:grid-cols-3">
+            <FileUpload kind="vendors" variant="image" name="logoUrl" label="Company logo" initialUrl={initialValues?.logoUrl} />
+            <FileUpload kind="vendors" variant="document" name="gstDocUrl" label="GST document" initialUrl={initialValues?.gstDocUrl} />
+            <FileUpload kind="vendors" variant="document" name="panDocUrl" label="PAN document" initialUrl={initialValues?.panDocUrl} />
           </div>
           <div className="md:col-span-2 flex flex-wrap gap-3">
             <Button type="submit" disabled={loading}>{loading ? "Saving..." : mode === "create" ? "Create vendor" : "Save changes"}</Button>

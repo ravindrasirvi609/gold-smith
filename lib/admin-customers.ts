@@ -9,6 +9,7 @@ export type CustomerListItem = {
   mobile: string;
   city: string;
   status: "ACTIVE" | "INACTIVE" | "BLOCKED";
+  photoUrl: string;
 };
 
 export type CustomerFormValues = {
@@ -29,6 +30,8 @@ export type CustomerFormValues = {
   country: string;
   remarks: string;
   status: "ACTIVE" | "INACTIVE" | "BLOCKED";
+  photoUrl?: string;
+  idProofUrl?: string;
 };
 
 function toObjectId(id: string) {
@@ -62,6 +65,7 @@ export async function getCustomers() {
         mobile: String(customer.mobile ?? ""),
         city: String(customer.city ?? ""),
         status: (customer.status ?? "ACTIVE") as CustomerListItem["status"],
+        photoUrl: String(customer.photoUrl ?? ""),
       }) satisfies CustomerListItem
   );
 }
@@ -89,6 +93,8 @@ export async function getCustomerById(id: string) {
     country: String(customer.country ?? ""),
     remarks: String(customer.remarks ?? ""),
     status: (customer.status ?? "ACTIVE") as CustomerFormValues["status"],
+    photoUrl: String(customer.photoUrl ?? ""),
+    idProofUrl: String(customer.idProofUrl ?? ""),
   };
 }
 
@@ -115,6 +121,8 @@ export async function createCustomer(input: CustomerFormValues) {
     country: normalizeText(input.country),
     remarks: normalizeText(input.remarks),
     status: input.status,
+    photoUrl: normalizeText(input.photoUrl ?? ""),
+    idProofUrl: normalizeText(input.idProofUrl ?? ""),
     createdAt: now,
     updatedAt: now,
   });
@@ -148,6 +156,8 @@ export async function updateCustomer(id: string, input: CustomerFormValues) {
         country: normalizeText(input.country),
         remarks: normalizeText(input.remarks),
         status: input.status,
+        photoUrl: normalizeText(input.photoUrl ?? ""),
+        idProofUrl: normalizeText(input.idProofUrl ?? ""),
         updatedAt: new Date(),
       },
     }
