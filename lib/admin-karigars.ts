@@ -1,5 +1,7 @@
 import { ObjectId } from "mongodb";
 import { getDb } from "@/lib/mongodb";
+import { formatCode, nextSequence } from "@/lib/sequences";
+import { deleteR2Objects } from "@/lib/r2-cleanup";
 
 export type KarigarListItem = {
   id: string;
@@ -50,10 +52,7 @@ function normalizeText(value: string) {
 }
 
 async function nextKarigarCode() {
-  const db = await getDb();
-  const latest = await db.collection("karigars").find({}).sort({ karigarCode: -1 }).limit(1).toArray();
-  const number = Number(String(latest[0]?.karigarCode ?? "K0000").replace(/\D/g, "")) || 0;
-  return `K${String(number + 1).padStart(4, "0")}`;
+  return formatCode("K", await nextSequence("karigar"));
 }
 
 export async function getKarigars() {
@@ -191,7 +190,25 @@ export async function deleteKarigar(id: string) {
   const karigarId = toObjectId(id);
   const existing = await db.collection("karigars").findOne({ _id: karigarId });
   if (!existing) throw new Error("Karigar not found.");
+
+  const [issues, receipts] = await Promise.all([
+    db.collection("karigarIssues").countDocuments({ karigarId }),
+    db.collection("karigarReceipts").countDocuments({ karigarId }),
+  ]);
+  if (issues + receipts > 0) {
+    throw new Error(
+      `Cannot delete karigar — ${issues + receipts} manufacturing record(s) reference this karigar. Deactivate instead.`
+    );
+  }
+
   await db.collection("karigars").deleteOne({ _id: karigarId });
+
+  await deleteR2Objects([
+    existing.photoUrl as string,
+    existing.aadhaarDocUrl as string,
+    existing.panDocUrl as string,
+  ]);
+
   return { id };
 }
 

@@ -36,12 +36,17 @@ function num(value: string) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+// Atomic sequence-based code generator. Replaces the previous find-max
+// pattern which was not safe under concurrent writes.
 async function nextCode(collectionName: string, prefix: string) {
-  const db = await getDb();
-  const latest = await db.collection(collectionName).find({}).sort({ createdAt: -1 }).limit(1).toArray();
-  const current = String(latest[0]?.[collectionName === "karigarIssues" ? "issueNo" : collectionName === "karigarReceipts" ? "receiptNo" : "jewelCode"] ?? `${prefix}0000`);
-  const number = Number(current.replace(/\D/g, "")) || 0;
-  return `${prefix}${String(number + 1).padStart(4, "0")}`;
+  const { formatCode, nextSequence } = await import("@/lib/sequences");
+  const seqName =
+    collectionName === "karigarIssues"
+      ? "karigarIssue"
+      : collectionName === "karigarReceipts"
+      ? "karigarReceipt"
+      : "product";
+  return formatCode(prefix, await nextSequence(seqName));
 }
 
 async function getIssue(issueId: string) {
@@ -197,11 +202,26 @@ export async function updateIssue(id: string, input: {
 }
 
 export async function deleteIssue(id: string) {
+  const { deleteR2Objects } = await import("@/lib/r2-cleanup");
   const db = await getDb();
   const issueId = oid(id);
+  const existing = await db.collection("karigarIssues").findOne({ _id: issueId });
+  if (!existing) throw new Error("Issue not found.");
+
+  // Block deletion if any receipt references this issue.
+  const receipts = await db
+    .collection("karigarReceipts")
+    .countDocuments({ issueId });
+  if (receipts > 0) {
+    throw new Error(
+      `Cannot delete issue — ${receipts} receipt(s) reference it. Cancel the issue instead.`
+    );
+  }
+
   await db.collection("goldInventoryLedger").deleteMany({ referenceType: "KarigarIssue", referenceId: issueId });
   await db.collection("diamondInventoryLedger").deleteMany({ referenceType: "KarigarIssue", referenceId: issueId });
   await db.collection("karigarIssues").deleteOne({ _id: issueId });
+  await deleteR2Objects([existing.challanUrl as string]);
   return { id };
 }
 

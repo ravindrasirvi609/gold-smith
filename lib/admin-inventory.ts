@@ -90,11 +90,13 @@ function num(value: string) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-async function nextSequence(collectionName: string, prefix: string) {
-  const db = await getDb();
-  const latest = await db.collection(collectionName).find({}).sort({ purchaseNo: -1 }).limit(1).toArray();
-  const number = Number(asString(latest[0]?.purchaseNo ?? `${prefix}0000`).replace(/\D/g, "")) || 0;
-  return `${prefix}${String(number + 1).padStart(4, "0")}`;
+// Atomic sequence-based code generator. Replaces the previous find-max
+// pattern which was not safe under concurrent writes.
+async function nextPurchaseNo(kind: "gold" | "diamond") {
+  const { formatCode, nextSequence: seq } = await import("@/lib/sequences");
+  const seqName = kind === "gold" ? "goldPurchase" : "diamondPurchase";
+  const prefix = kind === "gold" ? "GP" : "DP";
+  return formatCode(prefix, await seq(seqName));
 }
 
 export async function getGoldPurchases() {
@@ -276,7 +278,7 @@ async function syncDiamondLedger(purchaseId: ObjectId, purchaseNo: string, items
 export async function createGoldPurchase(input: GoldPurchaseFormValues, createdBy?: string) {
   const db = await getDb();
   const { vendorId } = await getVendorIdForPurchase(input.vendorId, ["GOLD", "BOTH"]);
-  const purchaseNo = await nextSequence("goldPurchases", "GP");
+  const purchaseNo = await nextPurchaseNo("gold");
   const now = new Date();
   const subtotal = input.items.reduce((sum, item) => sum + num(item.amount), 0);
   const total = subtotal + num(input.gst) + num(input.otherCharges);
@@ -321,19 +323,21 @@ export async function updateGoldPurchase(id: string, input: GoldPurchaseFormValu
 }
 
 export async function deleteGoldPurchase(id: string) {
+  const { deleteR2Objects } = await import("@/lib/r2-cleanup");
   const db = await getDb();
   const purchaseId = toObjectId(id);
   const existing = await db.collection("goldPurchases").findOne({ _id: purchaseId });
   if (!existing) throw new Error("Gold purchase not found.");
   await db.collection("goldInventoryLedger").deleteMany({ referenceType: "GoldPurchase", referenceId: purchaseId });
   await db.collection("goldPurchases").deleteOne({ _id: purchaseId });
+  await deleteR2Objects([existing.invoiceFileUrl as string]);
   return { id };
 }
 
 export async function createDiamondPurchase(input: DiamondPurchaseFormValues, createdBy?: string) {
   const db = await getDb();
   const { vendorId } = await getVendorIdForPurchase(input.vendorId, ["DIAMOND", "BOTH"]);
-  const purchaseNo = await nextSequence("diamondPurchases", "DP");
+  const purchaseNo = await nextPurchaseNo("diamond");
   const now = new Date();
   const subtotal = input.items.reduce((sum, item) => sum + num(item.amount), 0);
   const total = subtotal + num(input.gst) + num(input.otherCharges);
@@ -377,12 +381,14 @@ export async function updateDiamondPurchase(id: string, input: DiamondPurchaseFo
 }
 
 export async function deleteDiamondPurchase(id: string) {
+  const { deleteR2Objects } = await import("@/lib/r2-cleanup");
   const db = await getDb();
   const purchaseId = toObjectId(id);
   const existing = await db.collection("diamondPurchases").findOne({ _id: purchaseId });
   if (!existing) throw new Error("Diamond purchase not found.");
   await db.collection("diamondInventoryLedger").deleteMany({ referenceType: "DiamondPurchase", referenceId: purchaseId });
   await db.collection("diamondPurchases").deleteOne({ _id: purchaseId });
+  await deleteR2Objects([existing.invoiceFileUrl as string]);
   return { id };
 }
 

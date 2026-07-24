@@ -29,7 +29,10 @@ export default async function EditUserPage({ params }: PageProps) {
             mode="edit"
             actionUrl={`/api/users/${id}`}
             roles={roles}
-            initialValues={user}
+            initialValues={{
+              ...user,
+              profileImage: user.profileImage ?? undefined,
+            }}
           />
         </div>
       </div>

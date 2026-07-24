@@ -48,6 +48,7 @@ type FileUploadProps = {
 export function FileUpload({ kind, variant, name, label, initialUrl, initialName, className }: FileUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [url, setUrl] = useState(initialUrl ?? "");
+  const [previewUrl, setPreviewUrl] = useState(() => safeSrc(initialUrl ?? ""));
   const [fileName, setFileName] = useState(initialName ?? (initialUrl ? "Current file" : ""));
   const [fileSize, setFileSize] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -76,6 +77,7 @@ export function FileUpload({ kind, variant, name, label, initialUrl, initialName
       const data = await res.json().catch(() => null);
       if (!res.ok) throw new Error(data?.message ?? "Upload failed.");
       setUrl(data.file.url);
+      setPreviewUrl(safeSrc(data.file.url));
       setFileName(file.name);
       setFileSize(fmtBytes(file.size));
     } catch (err) {
@@ -99,6 +101,7 @@ export function FileUpload({ kind, variant, name, label, initialUrl, initialName
 
   function remove() {
     setUrl("");
+    setPreviewUrl("");
     setFileName("");
     setFileSize("");
   }
@@ -120,9 +123,9 @@ export function FileUpload({ kind, variant, name, label, initialUrl, initialName
           <AttachmentMedia>
             {uploading ? (
               <Spinner className="size-4" />
-            ) : variant === "image" && url ? (
+            ) : variant === "image" && previewUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={safeSrc(url)} alt={fileName} className="size-full object-cover" />
+              <img src={previewUrl} alt={fileName} className="size-full object-cover" />
             ) : (
               <FileIcon className="size-4" />
             )}

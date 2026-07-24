@@ -2,6 +2,8 @@ import bcrypt from "bcryptjs";
 import { ObjectId } from "mongodb";
 import { getRoleOptions } from "@/lib/admin-roles";
 import { getDb } from "@/lib/mongodb";
+import { assertPasswordStrength } from "@/lib/password-policy";
+import { deleteR2Objects } from "@/lib/r2-cleanup";
 
 export type { RoleOption } from "@/lib/admin-roles";
 export { getRoleOptions };
@@ -123,10 +125,14 @@ export async function createUser(input: UserFormValues, createdBy?: string) {
   if (!input.password) {
     throw new Error("Password is required.");
   }
+  assertPasswordStrength(input.password);
 
   const db = await getDb();
   const role = await getRoleDocument(input.roleId);
-  const existingUser = await db.collection("users").findOne({ email: input.email });
+  const normalizedEmail = input.email.trim().toLowerCase();
+  const existingUser = await db
+    .collection("users")
+    .findOne({ email: normalizedEmail });
 
   if (existingUser) {
     throw new Error("A user with this email already exists.");
@@ -138,7 +144,7 @@ export async function createUser(input: UserFormValues, createdBy?: string) {
   const result = await db.collection("users").insertOne({
     firstName: input.firstName.trim(),
     lastName: input.lastName.trim(),
-    email: input.email.trim().toLowerCase(),
+    email: normalizedEmail,
     mobile: input.mobile.trim(),
     password: passwordHash,
     role: new ObjectId(role._id),
@@ -175,6 +181,7 @@ export async function updateUser(id: string, input: UserFormValues) {
   };
 
   if (input.password?.trim()) {
+    assertPasswordStrength(input.password);
     update.password = await bcrypt.hash(input.password, 12);
   }
 
@@ -184,6 +191,24 @@ export async function updateUser(id: string, input: UserFormValues) {
       $set: update,
     }
   );
+
+  return { id };
+}
+
+export async function deleteUser(id: string) {
+  const db = await getDb();
+  const userId = toObjectId(id);
+  const existing = await db.collection("users").findOne({ _id: userId });
+  if (!existing) throw new Error("User not found.");
+
+  // Best-effort cleanup: invalidate all live sessions for this user so the
+  // deleted user cannot continue to hold an active JWT.
+  await db.collection("sessions").deleteMany({ userId: String(userId) });
+  await db.collection("users").deleteOne({ _id: userId });
+
+  if (existing.profileImage) {
+    await deleteR2Objects([existing.profileImage as string]);
+  }
 
   return { id };
 }

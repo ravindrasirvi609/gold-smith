@@ -1,5 +1,7 @@
 import { ObjectId } from "mongodb";
 import { getDb } from "@/lib/mongodb";
+import { formatCode, nextSequence } from "@/lib/sequences";
+import { deleteR2Objects } from "@/lib/r2-cleanup";
 
 export type CustomerListItem = {
   id: string;
@@ -46,10 +48,7 @@ function normalizeText(value: string) {
 }
 
 async function nextCustomerCode() {
-  const db = await getDb();
-  const latest = await db.collection("customers").find({}).sort({ customerCode: -1 }).limit(1).toArray();
-  const number = Number(String(latest[0]?.customerCode ?? "C0000").replace(/\D/g, "")) || 0;
-  return `C${String(number + 1).padStart(4, "0")}`;
+  return formatCode("C", await nextSequence("customer"));
 }
 
 export async function getCustomers() {
@@ -170,7 +169,27 @@ export async function deleteCustomer(id: string) {
   const customerId = toObjectId(id);
   const existing = await db.collection("customers").findOne({ _id: customerId });
   if (!existing) throw new Error("Customer not found.");
+
+  // Block deletion if the customer has any invoice, approval, or payment.
+  const [invoices, approvals, payments] = await Promise.all([
+    db.collection("invoices").countDocuments({ customerId }),
+    db.collection("approvals").countDocuments({ customerId }),
+    db.collection("payments").countDocuments({ customerId }),
+  ]);
+  const total = invoices + approvals + payments;
+  if (total > 0) {
+    throw new Error(
+      `Cannot delete customer — ${total} transaction(s) reference this customer. Deactivate instead.`
+    );
+  }
+
   await db.collection("customers").deleteOne({ _id: customerId });
+
+  await deleteR2Objects([
+    existing.photoUrl as string,
+    existing.idProofUrl as string,
+  ]);
+
   return { id };
 }
 

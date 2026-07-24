@@ -20,12 +20,22 @@ function n(value: string) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+// Atomic sequence-based code generator. Replaces the previous find-max
+// pattern which was not safe under concurrent writes.
 async function nextNo(collectionName: string, field: string, prefix: string) {
-  const db = await getDb();
-  const latest = await db.collection(collectionName).find({}).sort({ createdAt: -1 }).limit(1).toArray();
-  const current = s(latest[0]?.[field] ?? `${prefix}0000`);
-  const number = Number(current.replace(/\D/g, "")) || 0;
-  return `${prefix}${String(number + 1).padStart(5, "0")}`;
+  // Retain args for backwards-compat with existing callers; only the prefix
+  // is meaningful here — the sequence name is derived from it.
+  void collectionName;
+  void field;
+  const { formatDashedCode, nextSequence } = await import("@/lib/sequences");
+  const seqName =
+    prefix === "APP-"
+      ? "approval"
+      : prefix === "INV-"
+      ? "invoice"
+      : "payment";
+  const bare = prefix.replace(/-$/, "");
+  return formatDashedCode(bare, await nextSequence(seqName));
 }
 
 async function logAudit(input: {

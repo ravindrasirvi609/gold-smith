@@ -1,5 +1,7 @@
 import { ObjectId } from "mongodb";
 import { getDb } from "@/lib/mongodb";
+import { formatCode, nextSequence } from "@/lib/sequences";
+import { deleteR2Objects } from "@/lib/r2-cleanup";
 
 export type VendorListItem = {
   id: string;
@@ -104,11 +106,7 @@ export async function getVendorById(id: string) {
 }
 
 async function nextVendorCode() {
-  const db = await getDb();
-  const latest = await db.collection("vendors").find({}).sort({ vendorCode: -1 }).limit(1).toArray();
-  const current = latest[0]?.vendorCode;
-  const number = Number(String(current ?? "V0000").replace(/\D/g, "")) || 0;
-  return `V${String(number + 1).padStart(4, "0")}`;
+  return formatCode("V", await nextSequence("vendor"));
 }
 
 export async function createVendor(input: VendorFormValues) {
@@ -195,7 +193,25 @@ export async function deleteVendor(id: string) {
     throw new Error("Vendor not found.");
   }
 
+  // Prevent deleting vendors with dependent transactions.
+  const [gold, diamond] = await Promise.all([
+    db.collection("goldPurchases").countDocuments({ vendorId }),
+    db.collection("diamondPurchases").countDocuments({ vendorId }),
+  ]);
+  if (gold + diamond > 0) {
+    throw new Error(
+      `Cannot delete vendor — ${gold + diamond} purchase record(s) reference it. Deactivate the vendor instead.`
+    );
+  }
+
   await db.collection("vendors").deleteOne({ _id: vendorId });
+
+  // Best-effort R2 cleanup for any files the vendor owned.
+  await deleteR2Objects([
+    existing.logoUrl as string,
+    existing.gstDocUrl as string,
+    existing.panDocUrl as string,
+  ]);
 
   return { id };
 }
