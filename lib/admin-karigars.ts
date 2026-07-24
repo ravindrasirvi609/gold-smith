@@ -45,6 +45,9 @@ export type KarigarFormValues = {
   joiningDate: string;
   remarks: string;
   status: "ACTIVE" | "INACTIVE" | "BLOCKED";
+  // Extended fields (Workstream 3a)
+  gender?: string;
+  skillLevel?: string;
   photoUrl?: string;
   aadhaarDocUrl?: string;
   panDocUrl?: string;
@@ -165,6 +168,8 @@ export async function getKarigarById(id: string) {
     joiningDate: String(karigar.joiningDate ?? ""),
     remarks: String(karigar.remarks ?? ""),
     status: (karigar.status ?? "ACTIVE") as KarigarFormValues["status"],
+    gender: String(karigar.gender ?? ""),
+    skillLevel: String(karigar.skillLevel ?? ""),
     photoUrl: String(karigar.photoUrl ?? ""),
     aadhaarDocUrl: String(karigar.aadhaarDocUrl ?? ""),
     panDocUrl: String(karigar.panDocUrl ?? ""),
@@ -198,6 +203,8 @@ export async function createKarigar(input: KarigarFormValues) {
     joiningDate: normalizeText(input.joiningDate),
     remarks: normalizeText(input.remarks),
     status: input.status,
+    gender: normalizeText(input.gender ?? ""),
+    skillLevel: normalizeText(input.skillLevel ?? ""),
     photoUrl: normalizeText(input.photoUrl ?? ""),
     aadhaarDocUrl: normalizeText(input.aadhaarDocUrl ?? ""),
     panDocUrl: normalizeText(input.panDocUrl ?? ""),
@@ -239,6 +246,8 @@ export async function updateKarigar(id: string, input: KarigarFormValues) {
         joiningDate: normalizeText(input.joiningDate),
         remarks: normalizeText(input.remarks),
         status: input.status,
+        gender: normalizeText(input.gender ?? ""),
+        skillLevel: normalizeText(input.skillLevel ?? ""),
         photoUrl: normalizeText(input.photoUrl ?? ""),
         aadhaarDocUrl: normalizeText(input.aadhaarDocUrl ?? ""),
         panDocUrl: normalizeText(input.panDocUrl ?? ""),

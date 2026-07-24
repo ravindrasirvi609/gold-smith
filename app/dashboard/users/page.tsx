@@ -9,6 +9,7 @@ import { PaginationBar } from "@/components/ui/pagination-bar";
 import { parseListQuery } from "@/lib/list-query";
 import { EmptyState } from "@/components/ui/empty-state";
 import { UserCog } from "lucide-react";
+import { StatusBadge } from "@/components/ui/status-badge";
 
 type PageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -85,7 +86,7 @@ export default async function UsersPage({ searchParams }: PageProps) {
                     </td>
                     <td className="px-4 py-4 text-muted-foreground">{user.email}</td>
                     <td className="px-4 py-4">{user.roleName}</td>
-                    <td className="px-4 py-4">{user.status}</td>
+                    <td className="px-4 py-4"><StatusBadge status={user.status} /></td>
                     <td className="px-4 py-4">
                       {hasPermission(session, "USER_EDIT") ? (
                         <Link

@@ -8,6 +8,8 @@ import { PaginationBar } from "@/components/ui/pagination-bar";
 import { parseListQuery } from "@/lib/list-query";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Coins } from "lucide-react";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { formatINR, formatDate } from "@/lib/formatters";
 
 type PageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -95,9 +97,9 @@ export default async function GoldPurchasesPage({ searchParams }: PageProps) {
                     <td className="px-4 py-4 font-mono text-xs">{purchase.purchaseNo}</td>
                     <td className="px-4 py-4">{purchase.vendorName}</td>
                     <td className="px-4 py-4">{purchase.invoiceNo || "—"}</td>
-                    <td className="px-4 py-4">{purchase.purchaseDate || "—"}</td>
-                    <td className="px-4 py-4">{purchase.total}</td>
-                    <td className="px-4 py-4">{purchase.status}</td>
+                    <td className="px-4 py-4">{formatDate(purchase.purchaseDate)}</td>
+                    <td className="px-4 py-4 tabular-nums">{formatINR(purchase.total)}</td>
+                    <td className="px-4 py-4"><StatusBadge status={purchase.status} /></td>
                     <td className="px-4 py-4">
                       {purchase.invoiceFileUrl ? (
                         <a

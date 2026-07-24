@@ -116,6 +116,28 @@ export async function getKarigarOptions(): Promise<EntityOption[]> {
 }
 
 // ---------------------------------------------------------------------------
+// Invoices — pending/partially-paid invoices for payment picker
+// ---------------------------------------------------------------------------
+
+export async function getInvoiceOptions(): Promise<EntityOption[]> {
+  const db = await getDb();
+  const rows = await db
+    .collection("invoices")
+    .find(
+      { paymentStatus: { $in: ["PENDING_PAYMENT", "PARTIALLY_PAID", "DRAFT"] } },
+      { projection: { invoiceNo: 1, invoiceDate: 1, grandTotal: 1, paymentStatus: 1 } }
+    )
+    .sort({ createdAt: -1 })
+    .limit(OPTION_LIMIT)
+    .toArray();
+  return rows.map((row) => ({
+    value: String(row._id),
+    label: `${String(row.invoiceNo ?? "")} — ₹${String(row.grandTotal ?? "0")}`,
+    hint: String(row.invoiceDate ?? ""),
+  }));
+}
+
+// ---------------------------------------------------------------------------
 // Products — only AVAILABLE, for use on invoice / approval line items
 // ---------------------------------------------------------------------------
 

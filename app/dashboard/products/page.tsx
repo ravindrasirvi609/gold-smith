@@ -8,6 +8,8 @@ import { RowActionButton } from "@/components/ui/row-action-button";
 import { parseListQuery } from "@/lib/list-query";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Gem } from "lucide-react";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { formatWeight } from "@/lib/formatters";
 
 type PageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -33,7 +35,10 @@ export default async function ProductsPage({ searchParams }: PageProps) {
   return (
     <main className="min-h-screen bg-background text-foreground">
       <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-6 py-10">
-        <h1 className="text-3xl font-semibold">Products</h1>
+        <div>
+          <p className="text-sm font-medium text-muted-foreground">Inventory</p>
+          <h1 className="text-3xl font-semibold tracking-tight">Products</h1>
+        </div>
 
         <div className="mt-6">
           <ListToolbar
@@ -83,8 +88,8 @@ export default async function ProductsPage({ searchParams }: PageProps) {
                     </td>
                     <td className="px-4 py-4">{product.productName}</td>
                     <td className="px-4 py-4">{product.category}</td>
-                    <td className="px-4 py-4">{product.netWeight}</td>
-                    <td className="px-4 py-4">{product.status}</td>
+                    <td className="px-4 py-4 tabular-nums">{formatWeight(product.netWeight, "g")}</td>
+                    <td className="px-4 py-4"><StatusBadge status={product.status} /></td>
                     {canDelete ? (
                       <td className="px-4 py-4">
                         {product.status === "AVAILABLE" ? (

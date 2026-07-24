@@ -3,42 +3,294 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { User, MapPin, Heart, ShieldCheck, Star } from "lucide-react";
+import {
+  FormField,
+  SectionCard,
+  FormActions,
+  ReferenceSelect,
+  CountryPicker,
+  StatePicker,
+  GstInput,
+  PanInput,
+  MobileInput,
+  PincodeInput,
+  DateInput,
+} from "@/components/forms";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import type { CustomerFormValues } from "@/lib/admin-customers";
+import { Textarea } from "@/components/ui/textarea";
 import { FileUpload } from "@/components/ui/file-upload";
+import {
+  SALUTATIONS,
+  GENDERS,
+  MARITAL_STATUSES,
+  CUSTOMER_TIERS,
+  CONTACT_CHANNELS,
+  ACTIVE_STATUSES,
+} from "@/lib/reference-data";
+import type { CustomerFormValues } from "@/lib/admin-customers";
 
-type Props = { mode: "create" | "edit"; actionUrl: string; initialValues?: Partial<CustomerFormValues>; canDelete?: boolean };
+type Props = {
+  mode: "create" | "edit";
+  actionUrl: string;
+  initialValues?: Partial<CustomerFormValues>;
+  canDelete?: boolean;
+};
+
 export function CustomerForm({ mode, actionUrl, initialValues, canDelete }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [formValues, setFormValues] = useState<CustomerFormValues>({
-    firstName: initialValues?.firstName ?? "",
-    lastName: initialValues?.lastName ?? "",
-    gender: initialValues?.gender ?? "",
-    dob: initialValues?.dob ?? "",
-    anniversary: initialValues?.anniversary ?? "",
-    mobile: initialValues?.mobile ?? "",
-    alternateMobile: initialValues?.alternateMobile ?? "",
-    email: initialValues?.email ?? "",
-    gstNumber: initialValues?.gstNumber ?? "",
-    panNumber: initialValues?.panNumber ?? "",
-    address: initialValues?.address ?? "",
-    city: initialValues?.city ?? "",
-    state: initialValues?.state ?? "",
-    pincode: initialValues?.pincode ?? "",
-    country: initialValues?.country ?? "India",
-    remarks: initialValues?.remarks ?? "",
-    status: initialValues?.status ?? "ACTIVE",
-  });
-  const genderOptions = ["", "Male", "Female", "Other"];
+  const [country, setCountry] = useState(initialValues?.country ?? "IN");
+
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault(); setLoading(true); setError(null);
-    try { const response = await fetch(actionUrl, { method: mode === "create" ? "POST" : "PATCH", body: new FormData(event.currentTarget) }); const data = await response.json().catch(() => null); if (!response.ok) throw new Error(data?.message || "Could not save the customer."); toast.success(mode === "create" ? "Customer created." : "Customer updated."); router.push("/dashboard/customers"); router.refresh(); } catch (submitError) { const msg = submitError instanceof Error ? submitError.message : "Something went wrong."; setError(msg); toast.error(msg); } finally { setLoading(false); }
+    event.preventDefault();
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(actionUrl, {
+        method: mode === "create" ? "POST" : "PATCH",
+        body: new FormData(event.currentTarget),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(data?.message ?? "Could not save the customer.");
+      toast.success(mode === "create" ? "Customer created." : "Customer updated.");
+      router.push("/dashboard/customers");
+      router.refresh();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Something went wrong.";
+      setError(msg);
+      toast.error(msg);
+    } finally {
+      setLoading(false);
+    }
   }
-  async function onDelete() { if (!window.confirm("Delete this customer? This cannot be undone.")) return; setLoading(true); setError(null); try { const response = await fetch(actionUrl, { method: "DELETE" }); const data = await response.json().catch(() => null); if (!response.ok) throw new Error(data?.message || "Could not delete the customer."); toast.success("Customer deleted."); router.push("/dashboard/customers"); router.refresh(); } catch (deleteError) { const msg = deleteError instanceof Error ? deleteError.message : "Something went wrong."; setError(msg); toast.error(msg); } finally { setLoading(false); } }
-  return (<Card className="border-border/60 bg-card/95 shadow-lg shadow-black/5"><CardHeader><CardTitle className="text-2xl">{mode === "create" ? "Create customer" : "Edit customer"}</CardTitle><CardDescription>Capture the customer details used for approval and billing.</CardDescription></CardHeader><CardContent className="space-y-4">{error ? <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p> : null}<form className="grid gap-4 md:grid-cols-2" onSubmit={onSubmit}><div className="space-y-2"><Label htmlFor="firstName">First name</Label><Input id="firstName" name="firstName" value={formValues.firstName} onChange={(event) => setFormValues((current) => ({ ...current, firstName: event.target.value }))} /></div><div className="space-y-2"><Label htmlFor="lastName">Last name</Label><Input id="lastName" name="lastName" value={formValues.lastName} onChange={(event) => setFormValues((current) => ({ ...current, lastName: event.target.value }))} /></div><div className="space-y-2"><Label htmlFor="gender">Gender</Label><select id="gender" name="gender" className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={formValues.gender} onChange={(event) => setFormValues((current) => ({ ...current, gender: event.target.value }))}>{genderOptions.map((option) => (<option key={option || "blank"} value={option}>{option || "Select gender"}</option>))}</select></div><div className="space-y-2"><Label htmlFor="dob">Date of birth</Label><Input id="dob" name="dob" type="date" value={formValues.dob} onChange={(event) => setFormValues((current) => ({ ...current, dob: event.target.value }))} /></div><div className="space-y-2"><Label htmlFor="anniversary">Anniversary</Label><Input id="anniversary" name="anniversary" type="date" value={formValues.anniversary} onChange={(event) => setFormValues((current) => ({ ...current, anniversary: event.target.value }))} /></div><div className="space-y-2"><Label htmlFor="mobile">Mobile</Label><Input id="mobile" name="mobile" value={formValues.mobile} onChange={(event) => setFormValues((current) => ({ ...current, mobile: event.target.value }))} /></div><div className="space-y-2"><Label htmlFor="alternateMobile">Alternate mobile</Label><Input id="alternateMobile" name="alternateMobile" value={formValues.alternateMobile} onChange={(event) => setFormValues((current) => ({ ...current, alternateMobile: event.target.value }))} /></div><div className="space-y-2"><Label htmlFor="email">Email</Label><Input id="email" name="email" value={formValues.email} onChange={(event) => setFormValues((current) => ({ ...current, email: event.target.value }))} /></div><div className="space-y-2"><Label htmlFor="gstNumber">Gst number</Label><Input id="gstNumber" name="gstNumber" value={formValues.gstNumber} onChange={(event) => setFormValues((current) => ({ ...current, gstNumber: event.target.value }))} /></div><div className="space-y-2"><Label htmlFor="panNumber">Pan number</Label><Input id="panNumber" name="panNumber" value={formValues.panNumber} onChange={(event) => setFormValues((current) => ({ ...current, panNumber: event.target.value }))} /></div><div className="space-y-2"><Label htmlFor="city">City</Label><Input id="city" name="city" value={formValues.city} onChange={(event) => setFormValues((current) => ({ ...current, city: event.target.value }))} /></div><div className="space-y-2"><Label htmlFor="state">State</Label><Input id="state" name="state" value={formValues.state} onChange={(event) => setFormValues((current) => ({ ...current, state: event.target.value }))} /></div><div className="space-y-2"><Label htmlFor="pincode">Pincode</Label><Input id="pincode" name="pincode" value={formValues.pincode} onChange={(event) => setFormValues((current) => ({ ...current, pincode: event.target.value }))} /></div><div className="space-y-2"><Label htmlFor="country">Country</Label><Input id="country" name="country" value={formValues.country} onChange={(event) => setFormValues((current) => ({ ...current, country: event.target.value }))} /></div><div className="space-y-2 md:col-span-2"><Label htmlFor="address">Address</Label><Input id="address" name="address" value={formValues.address} onChange={(event) => setFormValues((current) => ({ ...current, address: event.target.value }))} /></div><div className="space-y-2 md:col-span-2"><Label htmlFor="remarks">Remarks</Label><Input id="remarks" name="remarks" value={formValues.remarks} onChange={(event) => setFormValues((current) => ({ ...current, remarks: event.target.value }))} /></div><div className="space-y-2"><Label htmlFor="status">Status</Label><select id="status" name="status" className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={formValues.status} onChange={(event) => setFormValues((current) => ({ ...current, status: event.target.value as CustomerFormValues["status"] }))}><option value="ACTIVE">ACTIVE</option><option value="INACTIVE">INACTIVE</option><option value="BLOCKED">BLOCKED</option></select></div><div className="md:col-span-2 grid gap-4 sm:grid-cols-2"><FileUpload kind="customers" variant="image" name="photoUrl" label="Customer photo" initialUrl={initialValues?.photoUrl} /><FileUpload kind="customers" variant="document" name="idProofUrl" label="ID proof" initialUrl={initialValues?.idProofUrl} /></div><div className="md:col-span-2 flex flex-wrap gap-3"><Button type="submit" disabled={loading}>{loading ? "Saving..." : mode === "create" ? "Create customer" : "Save changes"}</Button><Button type="button" variant="outline" onClick={() => router.back()} disabled={loading}>Cancel</Button>{mode === "edit" && canDelete ? <Button type="button" variant="destructive" onClick={onDelete} disabled={loading}>Delete customer</Button> : null}</div></form></CardContent></Card>);
+
+  async function onDelete() {
+    if (!window.confirm("Delete this customer? This cannot be undone.")) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(actionUrl, { method: "DELETE" });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(data?.message ?? "Could not delete the customer.");
+      toast.success("Customer deleted.");
+      router.push("/dashboard/customers");
+      router.refresh();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Something went wrong.";
+      setError(msg);
+      toast.error(msg);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <form onSubmit={onSubmit} className="space-y-6">
+      {error ? (
+        <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          {error}
+        </p>
+      ) : null}
+
+      {/* ── Identity ─────────────────────────────────────────────────── */}
+      <SectionCard
+        title="Identity"
+        description="Name, tier, and account status."
+        icon={User}
+        columns={2}
+      >
+        <FormField label="Salutation">
+          <ReferenceSelect
+            name="salutation"
+            options={SALUTATIONS}
+            includeEmpty
+            emptyLabel="Select"
+            defaultValue={initialValues?.salutation ?? ""}
+          />
+        </FormField>
+        <FormField label="Customer tier">
+          <ReferenceSelect
+            name="customerTier"
+            options={CUSTOMER_TIERS}
+            includeEmpty
+            emptyLabel="Select tier"
+            defaultValue={initialValues?.customerTier ?? ""}
+          />
+        </FormField>
+        <FormField label="First name" required>
+          <Input
+            name="firstName"
+            defaultValue={initialValues?.firstName ?? ""}
+            placeholder="e.g. Priya"
+          />
+        </FormField>
+        <FormField label="Last name">
+          <Input
+            name="lastName"
+            defaultValue={initialValues?.lastName ?? ""}
+            placeholder="e.g. Sharma"
+          />
+        </FormField>
+        <FormField label="Status" required>
+          <ReferenceSelect
+            name="status"
+            options={ACTIVE_STATUSES.map((s) => ({ value: s.value, label: s.label }))}
+            defaultValue={initialValues?.status ?? "ACTIVE"}
+          />
+        </FormField>
+        <FormField label="Preferred contact channel">
+          <ReferenceSelect
+            name="preferredContactChannel"
+            options={CONTACT_CHANNELS}
+            includeEmpty
+            emptyLabel="Select channel"
+            defaultValue={initialValues?.preferredContactChannel ?? ""}
+          />
+        </FormField>
+        <FormField label="Remarks" className="sm:col-span-2">
+          <Textarea
+            name="remarks"
+            rows={2}
+            defaultValue={initialValues?.remarks ?? ""}
+            placeholder="Any notes about this customer…"
+          />
+        </FormField>
+      </SectionCard>
+
+      {/* ── Contact ──────────────────────────────────────────────────── */}
+      <SectionCard
+        title="Contact"
+        description="Phone, email, and address."
+        icon={MapPin}
+        columns={2}
+      >
+        <FormField label="Primary mobile" required>
+          <MobileInput name="mobile" defaultValue={initialValues?.mobile ?? ""} />
+        </FormField>
+        <FormField label="Alternate mobile">
+          <MobileInput name="alternateMobile" defaultValue={initialValues?.alternateMobile ?? ""} />
+        </FormField>
+        <FormField label="Email" className="sm:col-span-2">
+          <Input
+            name="email"
+            type="email"
+            defaultValue={initialValues?.email ?? ""}
+            placeholder="customer@example.com"
+          />
+        </FormField>
+        <FormField label="Address" className="sm:col-span-2">
+          <Textarea
+            name="address"
+            rows={2}
+            defaultValue={initialValues?.address ?? ""}
+            placeholder="Street / building / locality"
+          />
+        </FormField>
+        <FormField label="City">
+          <Input name="city" defaultValue={initialValues?.city ?? ""} placeholder="e.g. Delhi" />
+        </FormField>
+        <FormField label="Pincode">
+          <PincodeInput name="pincode" defaultValue={initialValues?.pincode ?? ""} />
+        </FormField>
+        <FormField label="Country">
+          <CountryPicker
+            name="country"
+            defaultValue={initialValues?.country ?? "IN"}
+            onChange={setCountry}
+          />
+        </FormField>
+        <FormField label="State / province">
+          <StatePicker
+            name="state"
+            country={country}
+            defaultValue={initialValues?.state ?? ""}
+          />
+        </FormField>
+      </SectionCard>
+
+      {/* ── Personal ─────────────────────────────────────────────────── */}
+      <SectionCard
+        title="Personal"
+        description="Demographics for personalised offers and event reminders."
+        icon={Heart}
+        columns={2}
+      >
+        <FormField label="Gender">
+          <ReferenceSelect
+            name="gender"
+            options={GENDERS}
+            includeEmpty
+            emptyLabel="Select gender"
+            defaultValue={initialValues?.gender ?? ""}
+          />
+        </FormField>
+        <FormField label="Marital status">
+          <ReferenceSelect
+            name="maritalStatus"
+            options={MARITAL_STATUSES}
+            includeEmpty
+            emptyLabel="Select"
+            defaultValue={initialValues?.maritalStatus ?? ""}
+          />
+        </FormField>
+        <FormField label="Date of birth" hint="Used for birthday greetings">
+          <DateInput name="dob" defaultValue={initialValues?.dob ?? ""} pastOnly />
+        </FormField>
+        <FormField label="Wedding anniversary">
+          <DateInput name="anniversary" defaultValue={initialValues?.anniversary ?? ""} pastOnly />
+        </FormField>
+      </SectionCard>
+
+      {/* ── KYC ──────────────────────────────────────────────────────── */}
+      <SectionCard
+        title="KYC"
+        description="Tax identifiers for GST billing."
+        icon={ShieldCheck}
+        columns={2}
+      >
+        <FormField label="GST number" hint="15-character GSTIN">
+          <GstInput name="gstNumber" defaultValue={initialValues?.gstNumber ?? ""} />
+        </FormField>
+        <FormField label="PAN number" hint="10-character PAN">
+          <PanInput name="panNumber" defaultValue={initialValues?.panNumber ?? ""} />
+        </FormField>
+      </SectionCard>
+
+      {/* ── Documents ────────────────────────────────────────────────── */}
+      <SectionCard
+        title="Documents"
+        description="Customer photo and identity proof."
+        icon={Star}
+        columns={2}
+      >
+        <div className="sm:col-span-2 grid gap-4 sm:grid-cols-2">
+          <FileUpload
+            kind="customers"
+            variant="image"
+            name="photoUrl"
+            label="Customer photo"
+            initialUrl={initialValues?.photoUrl}
+          />
+          <FileUpload
+            kind="customers"
+            variant="document"
+            name="idProofUrl"
+            label="ID proof"
+            initialUrl={initialValues?.idProofUrl}
+          />
+        </div>
+      </SectionCard>
+
+      <FormActions
+        loading={loading}
+        saveLabel={mode === "create" ? "Create customer" : "Save changes"}
+        onCancel={() => router.back()}
+        onDelete={mode === "edit" && canDelete ? onDelete : undefined}
+        deleteLabel="Delete customer"
+        sticky
+      />
+    </form>
+  );
 }

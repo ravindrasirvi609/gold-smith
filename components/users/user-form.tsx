@@ -3,56 +3,73 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Eye, EyeOff, UserCircle, ShieldCheck, ImageIcon } from "lucide-react";
+import {
+  FormField,
+  SectionCard,
+  FormActions,
+  ReferenceSelect,
+  MobileInput,
+} from "@/components/forms";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import type { RoleOption, UserFormValues } from "@/lib/admin-users";
+import { Button } from "@/components/ui/button";
 import { FileUpload } from "@/components/ui/file-upload";
+import { ACTIVE_STATUSES } from "@/lib/reference-data";
+import type { RoleOption, UserFormValues } from "@/lib/admin-users";
+import { cn } from "@/lib/utils";
 
-type UserFormProps = {
+/** Measures password strength 0-4 based on criteria met. */
+function scorePassword(pwd: string): 0 | 1 | 2 | 3 | 4 {
+  if (!pwd) return 0;
+  let score = 0;
+  if (pwd.length >= 8) score++;
+  if (/[A-Z]/.test(pwd)) score++;
+  if (/[0-9]/.test(pwd)) score++;
+  if (/[^A-Za-z0-9]/.test(pwd)) score++;
+  return score as 0 | 1 | 2 | 3 | 4;
+}
+
+const STRENGTH_LABELS = ["", "Weak", "Fair", "Good", "Strong"] as const;
+const STRENGTH_BAR_CLASSES: Record<number, string> = {
+  0: "bg-transparent",
+  1: "bg-red-500",
+  2: "bg-amber-500",
+  3: "bg-blue-500",
+  4: "bg-emerald-500",
+};
+
+type Props = {
   mode: "create" | "edit";
   actionUrl: string;
   roles: RoleOption[];
   initialValues?: Partial<UserFormValues>;
 };
 
-export function UserForm({ mode, actionUrl, roles, initialValues }: UserFormProps) {
+export function UserForm({ mode, actionUrl, roles, initialValues }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [formValues, setFormValues] = useState({
-    firstName: initialValues?.firstName ?? "",
-    lastName: initialValues?.lastName ?? "",
-    email: initialValues?.email ?? "",
-    mobile: initialValues?.mobile ?? "",
-    password: "",
-    roleId: initialValues?.roleId ?? roles[0]?.id ?? "",
-    status: initialValues?.status ?? "ACTIVE",
-  });
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+
+  const strength = scorePassword(password);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
     setError(null);
-
     try {
       const response = await fetch(actionUrl, {
         method: mode === "create" ? "POST" : "PATCH",
         body: new FormData(event.currentTarget),
       });
-
       const data = await response.json().catch(() => null);
-
-      if (!response.ok) {
-        throw new Error(data?.message || "Could not save the user.");
-      }
-
+      if (!response.ok) throw new Error(data?.message ?? "Could not save the user.");
       toast.success(mode === "create" ? "User created." : "User updated.");
       router.push("/dashboard/users");
       router.refresh();
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : "Something went wrong.";
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Something went wrong.";
       setError(msg);
       toast.error(msg);
     } finally {
@@ -61,153 +78,163 @@ export function UserForm({ mode, actionUrl, roles, initialValues }: UserFormProp
   }
 
   return (
-    <Card className="border-border/60 bg-card/95 shadow-lg shadow-black/5">
-      <CardHeader>
-        <CardTitle className="text-2xl">
-          {mode === "create" ? "Create user" : "Edit user"}
-        </CardTitle>
-        <CardDescription>
-          Add a user, assign a role, and keep the interface simple.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {error ? (
-          <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-            {error}
-          </p>
-        ) : null}
-        <form className="grid gap-4 md:grid-cols-2" onSubmit={onSubmit}>
-          <div className="space-y-2">
-            <Label htmlFor="firstName">First name</Label>
+    <form onSubmit={onSubmit} className="space-y-6">
+      {error ? (
+        <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          {error}
+        </p>
+      ) : null}
+
+      {/* ── Identity ─────────────────────────────────────────────────── */}
+      <SectionCard
+        title="Identity"
+        description="Name, contact, and account status."
+        icon={UserCircle}
+        columns={2}
+      >
+        <FormField label="First name" required>
+          <Input
+            name="firstName"
+            defaultValue={initialValues?.firstName ?? ""}
+            placeholder="e.g. Anita"
+          />
+        </FormField>
+        <FormField label="Last name">
+          <Input
+            name="lastName"
+            defaultValue={initialValues?.lastName ?? ""}
+            placeholder="e.g. Patel"
+          />
+        </FormField>
+        <FormField label="Email" required className="sm:col-span-2">
+          <Input
+            name="email"
+            type="email"
+            required
+            defaultValue={initialValues?.email ?? ""}
+            placeholder="user@example.com"
+          />
+        </FormField>
+        <FormField label="Mobile">
+          <MobileInput name="mobile" defaultValue={initialValues?.mobile ?? ""} />
+        </FormField>
+        <FormField label="Status" required>
+          <ReferenceSelect
+            name="status"
+            options={ACTIVE_STATUSES.map((s) => ({ value: s.value, label: s.label }))}
+            defaultValue={initialValues?.status ?? "ACTIVE"}
+          />
+        </FormField>
+      </SectionCard>
+
+      {/* ── Access ───────────────────────────────────────────────────── */}
+      <SectionCard
+        title="Access"
+        description="Role assignment and password."
+        icon={ShieldCheck}
+        columns={2}
+      >
+        <FormField label="Role" required>
+          <select
+            name="roleId"
+            className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            defaultValue={initialValues?.roleId ?? roles[0]?.id ?? ""}
+          >
+            {roles.map((role) => (
+              <option key={role.id} value={role.id}>
+                {role.name}
+              </option>
+            ))}
+          </select>
+        </FormField>
+
+        {/* Password with show/hide + strength bar */}
+        <FormField
+          label={mode === "create" ? "Password" : "New password"}
+          hint={mode === "edit" ? "Leave blank to keep the current password" : undefined}
+          required={mode === "create"}
+          className="sm:col-span-2"
+        >
+          <div className="relative">
             <Input
-              id="firstName"
-              name="firstName"
-              required
-              value={formValues.firstName}
-              onChange={(event) =>
-                setFormValues((current) => ({
-                  ...current,
-                  firstName: event.target.value,
-                }))
-              }
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="lastName">Last name</Label>
-            <Input
-              id="lastName"
-              name="lastName"
-              value={formValues.lastName}
-              onChange={(event) =>
-                setFormValues((current) => ({
-                  ...current,
-                  lastName: event.target.value,
-                }))
-              }
-            />
-          </div>
-          <div className="space-y-2 md:col-span-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              name="email"
-              type="email"
-              required
-              value={formValues.email}
-              onChange={(event) =>
-                setFormValues((current) => ({
-                  ...current,
-                  email: event.target.value,
-                }))
-              }
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="mobile">Mobile</Label>
-            <Input
-              id="mobile"
-              name="mobile"
-              value={formValues.mobile}
-              onChange={(event) =>
-                setFormValues((current) => ({
-                  ...current,
-                  mobile: event.target.value,
-                }))
-              }
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="roleId">Role</Label>
-            <select
-              id="roleId"
-              name="roleId"
-              className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              value={formValues.roleId}
-              onChange={(event) =>
-                setFormValues((current) => ({
-                  ...current,
-                  roleId: event.target.value,
-                }))
-              }
-            >
-              {roles.map((role) => (
-                <option key={role.id} value={role.id}>
-                  {role.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="status">Status</Label>
-            <select
-              id="status"
-              name="status"
-              className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              value={formValues.status}
-              onChange={(event) =>
-                setFormValues((current) => ({
-                  ...current,
-                  status: event.target.value as UserFormValues["status"],
-                }))
-              }
-            >
-              <option value="ACTIVE">ACTIVE</option>
-              <option value="INACTIVE">INACTIVE</option>
-              <option value="BLOCKED">BLOCKED</option>
-            </select>
-          </div>
-          <div className="space-y-2 md:col-span-2">
-            <Label htmlFor="password">
-              {mode === "create" ? "Password" : "New password"}
-            </Label>
-            <Input
-              id="password"
               name="password"
-              type="password"
-              placeholder={mode === "create" ? "Set a password" : "Leave blank to keep current password"}
-              value={formValues.password}
-              onChange={(event) =>
-                setFormValues((current) => ({
-                  ...current,
-                  password: event.target.value,
-                }))
-              }
+              type={showPassword ? "text" : "password"}
               required={mode === "create"}
+              placeholder={
+                mode === "create" ? "Set a secure password" : "Enter a new password to change it"
+              }
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="pr-10"
             />
-          </div>
-          <div className="md:col-span-2">
-            <FileUpload kind="users" variant="image" name="profileImage" label="Profile photo" initialUrl={initialValues?.profileImage ?? undefined} />
-          </div>
-          <div className="md:col-span-2 flex flex-wrap gap-3">
-            <Button type="submit" disabled={loading}>
-              {loading ? "Saving..." : mode === "create" ? "Create user" : "Save changes"}
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground"
+              onClick={() => setShowPassword((v) => !v)}
+              tabIndex={-1}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+            >
+              {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
             </Button>
-            <Button type="button" variant="outline" onClick={() => router.back()}>
-              Cancel
-            </Button>
           </div>
-        </form>
-      </CardContent>
-    </Card>
+          {password ? (
+            <div className="mt-2 space-y-1">
+              <div className="flex gap-1">
+                {[1, 2, 3, 4].map((n) => (
+                  <div
+                    key={n}
+                    className={cn(
+                      "h-1 flex-1 rounded-full transition-colors",
+                      strength >= n ? STRENGTH_BAR_CLASSES[strength] : "bg-muted"
+                    )}
+                  />
+                ))}
+              </div>
+              {strength > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Password strength:{" "}
+                  <span
+                    className={cn(
+                      "font-medium",
+                      strength <= 1 && "text-red-600",
+                      strength === 2 && "text-amber-600",
+                      strength === 3 && "text-blue-600",
+                      strength === 4 && "text-emerald-600"
+                    )}
+                  >
+                    {STRENGTH_LABELS[strength]}
+                  </span>
+                </p>
+              )}
+            </div>
+          ) : null}
+        </FormField>
+      </SectionCard>
+
+      {/* ── Photo ────────────────────────────────────────────────────── */}
+      <SectionCard
+        title="Photo"
+        description="Profile picture shown in the navigation bar."
+        icon={ImageIcon}
+        columns={1}
+      >
+        <FileUpload
+          kind="users"
+          variant="image"
+          name="profileImage"
+          label="Profile photo"
+          initialUrl={initialValues?.profileImage ?? undefined}
+        />
+      </SectionCard>
+
+      <FormActions
+        loading={loading}
+        saveLabel={mode === "create" ? "Create user" : "Save changes"}
+        onCancel={() => router.back()}
+        sticky
+      />
+    </form>
   );
 }

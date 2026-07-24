@@ -9,6 +9,8 @@ import { RowActionButton } from "@/components/ui/row-action-button";
 import { parseListQuery } from "@/lib/list-query";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Handshake } from "lucide-react";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { formatDate } from "@/lib/formatters";
 
 type PageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -39,10 +41,10 @@ export default async function ApprovalsPage({ searchParams }: PageProps) {
   return (
     <main className="min-h-screen bg-background text-foreground">
       <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-6 py-10">
-        <div className="flex items-end justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-sm text-muted-foreground">Sales</p>
-            <h1 className="text-3xl font-semibold">Approvals</h1>
+            <p className="text-sm font-medium text-muted-foreground">Sales</p>
+            <h1 className="text-3xl font-semibold tracking-tight">Approvals</h1>
           </div>
           {hasPermission(session, "APPROVAL_CREATE") ? (
             <Link href="/dashboard/approvals/new">
@@ -77,10 +79,10 @@ export default async function ApprovalsPage({ searchParams }: PageProps) {
                   <tr key={approval.id} className="border-b last:border-b-0">
                     <td className="px-4 py-4 font-mono text-xs">{approval.approvalNo}</td>
                     <td className="px-4 py-4">{approval.customerName}</td>
-                    <td className="px-4 py-4">{approval.issueDate || "—"}</td>
-                    <td className="px-4 py-4">{approval.expectedReturnDate || "—"}</td>
+                    <td className="px-4 py-4">{formatDate(approval.issueDate)}</td>
+                    <td className="px-4 py-4">{formatDate(approval.expectedReturnDate)}</td>
                     <td className="px-4 py-4">{approval.productCount}</td>
-                    <td className="px-4 py-4">{approval.status}</td>
+                    <td className="px-4 py-4"><StatusBadge status={approval.status} /></td>
                     {hasActions ? (
                       <td className="px-4 py-4">
                         <div className="flex items-center gap-3">

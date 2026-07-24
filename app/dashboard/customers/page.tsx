@@ -10,6 +10,7 @@ import { parseListQuery } from "@/lib/list-query";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ExportCsvButton } from "@/components/ui/export-csv-button";
 import { Users } from "lucide-react";
+import { StatusBadge } from "@/components/ui/status-badge";
 
 type PageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -84,7 +85,7 @@ export default async function CustomersPage({ searchParams }: PageProps) {
                     </td>
                     <td className="px-4 py-4">{customer.mobile}</td>
                     <td className="px-4 py-4">{customer.city}</td>
-                    <td className="px-4 py-4">{customer.status}</td>
+                    <td className="px-4 py-4"><StatusBadge status={customer.status} /></td>
                     <td className="px-4 py-4">
                       <div className="flex items-center gap-3">
                         <Link

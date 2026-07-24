@@ -42,6 +42,14 @@ export type VendorFormValues = {
   creditDays: string;
   remarks: string;
   status: "ACTIVE" | "INACTIVE" | "BLOCKED";
+  // Extended fields (Workstream 3a)
+  businessType?: string;
+  website?: string;
+  paymentTerms?: string;
+  creditLimit?: string;
+  bankName?: string;
+  ifscCode?: string;
+  accountNumber?: string;
   logoUrl?: string;
   gstDocUrl?: string;
   panDocUrl?: string;
@@ -156,6 +164,13 @@ export async function getVendorById(id: string) {
     creditDays: String(vendor.creditDays ?? "0"),
     remarks: String(vendor.remarks ?? ""),
     status: (vendor.status ?? "ACTIVE") as VendorFormValues["status"],
+    businessType: String(vendor.businessType ?? ""),
+    website: String(vendor.website ?? ""),
+    paymentTerms: String(vendor.paymentTerms ?? ""),
+    creditLimit: String(vendor.creditLimit ?? "0"),
+    bankName: String(vendor.bankName ?? ""),
+    ifscCode: String(vendor.ifscCode ?? ""),
+    accountNumber: String(vendor.accountNumber ?? ""),
     logoUrl: String(vendor.logoUrl ?? ""),
     gstDocUrl: String(vendor.gstDocUrl ?? ""),
     panDocUrl: String(vendor.panDocUrl ?? ""),
@@ -190,6 +205,13 @@ export async function createVendor(input: VendorFormValues) {
     creditDays: normalizeText(input.creditDays),
     remarks: normalizeText(input.remarks),
     status: input.status,
+    businessType: normalizeText(input.businessType ?? ""),
+    website: normalizeText(input.website ?? ""),
+    paymentTerms: normalizeText(input.paymentTerms ?? ""),
+    creditLimit: normalizeText(input.creditLimit ?? "0"),
+    bankName: normalizeText(input.bankName ?? ""),
+    ifscCode: normalizeText(input.ifscCode ?? "").toUpperCase(),
+    accountNumber: normalizeText(input.accountNumber ?? ""),
     logoUrl: normalizeText(input.logoUrl ?? ""),
     gstDocUrl: normalizeText(input.gstDocUrl ?? ""),
     panDocUrl: normalizeText(input.panDocUrl ?? ""),
@@ -230,6 +252,13 @@ export async function updateVendor(id: string, input: VendorFormValues) {
         creditDays: normalizeText(input.creditDays),
         remarks: normalizeText(input.remarks),
         status: input.status,
+        businessType: normalizeText(input.businessType ?? ""),
+        website: normalizeText(input.website ?? ""),
+        paymentTerms: normalizeText(input.paymentTerms ?? ""),
+        creditLimit: normalizeText(input.creditLimit ?? "0"),
+        bankName: normalizeText(input.bankName ?? ""),
+        ifscCode: normalizeText(input.ifscCode ?? "").toUpperCase(),
+        accountNumber: normalizeText(input.accountNumber ?? ""),
         logoUrl: normalizeText(input.logoUrl ?? ""),
         gstDocUrl: normalizeText(input.gstDocUrl ?? ""),
         panDocUrl: normalizeText(input.panDocUrl ?? ""),

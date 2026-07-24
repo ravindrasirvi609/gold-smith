@@ -9,6 +9,8 @@ import { parseListQuery } from "@/lib/list-query";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ExportCsvButton } from "@/components/ui/export-csv-button";
 import { Receipt } from "lucide-react";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { formatINR, formatDate } from "@/lib/formatters";
 
 type PageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -35,8 +37,11 @@ export default async function InvoicesPage({ searchParams }: PageProps) {
   return (
     <main className="min-h-screen bg-background text-foreground">
       <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-6 py-10">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-semibold">Invoices</h1>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-sm font-medium text-muted-foreground">Sales</p>
+            <h1 className="text-3xl font-semibold tracking-tight">Invoices</h1>
+          </div>
           <ExportCsvButton endpoint="/api/invoices/export" />
         </div>
 
@@ -66,9 +71,9 @@ export default async function InvoicesPage({ searchParams }: PageProps) {
                   <tr key={invoice.id} className="border-b last:border-b-0">
                     <td className="px-4 py-4 font-mono text-xs">{invoice.invoiceNo}</td>
                     <td className="px-4 py-4">{invoice.customerName}</td>
-                    <td className="px-4 py-4">{invoice.invoiceDate || "—"}</td>
-                    <td className="px-4 py-4">{invoice.grandTotal}</td>
-                    <td className="px-4 py-4">{invoice.paymentStatus}</td>
+                    <td className="px-4 py-4">{formatDate(invoice.invoiceDate)}</td>
+                    <td className="px-4 py-4 tabular-nums">{formatINR(invoice.grandTotal)}</td>
+                    <td className="px-4 py-4"><StatusBadge status={invoice.paymentStatus} /></td>
                     {hasActions ? (
                       <td className="px-4 py-4">
                         <div className="flex items-center gap-3">

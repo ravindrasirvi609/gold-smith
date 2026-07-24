@@ -3,24 +3,57 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Plus, Trash2, ShoppingCart, List, Calculator } from "lucide-react";
+import {
+  FormField,
+  SectionCard,
+  FormActions,
+  ReferenceSelect,
+  DateInput,
+  MoneyInput,
+  WeightInput,
+} from "@/components/forms";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { FileUpload } from "@/components/ui/file-upload";
+import {
+  GOLD_PURITY,
+  PURCHASE_STATUSES,
+  DIAMOND_SHAPES,
+  DIAMOND_COLOURS,
+  DIAMOND_CLARITY,
+  DIAMOND_SIEVES,
+} from "@/lib/reference-data";
+import { formatINR } from "@/lib/formatters";
 
-type GoldItem = { purity: string; grossWeight: string; pureWeight: string; ratePerGram: string; amount: string };
-type DiamondItem = { sieveSize: string; shape: string; color: string; clarity: string; pcs: string; carat: string; ratePerCarat: string; amount: string };
+type GoldItem = {
+  purity: string;
+  grossWeight: string;
+  pureWeight: string;
+  ratePerGram: string;
+  amount: string;
+};
+
+type DiamondItem = {
+  sieveSize: string;
+  shape: string;
+  color: string;
+  clarity: string;
+  pcs: string;
+  carat: string;
+  ratePerCarat: string;
+  amount: string;
+};
 
 type VendorOption = { id: string; name: string };
-type PurchaseItem = Record<string, string>;
 
 type PurchaseInitialValues = {
   vendorId?: string;
   invoiceNo?: string;
   invoiceDate?: string;
   purchaseDate?: string;
-  items?: PurchaseItem[];
+  items?: Record<string, string>[];
   gst?: string;
   otherCharges?: string;
   remarks?: string;
@@ -37,107 +70,408 @@ type Props = {
   canDelete?: boolean;
 };
 
-function emptyGoldItem(): GoldItem { return { purity: "", grossWeight: "", pureWeight: "", ratePerGram: "", amount: "" }; }
-function emptyDiamondItem(): DiamondItem { return { sieveSize: "", shape: "", color: "", clarity: "", pcs: "", carat: "", ratePerCarat: "", amount: "" }; }
+function emptyGold(): GoldItem {
+  return { purity: "916", grossWeight: "", pureWeight: "", ratePerGram: "", amount: "" };
+}
+function emptyDiamond(): DiamondItem {
+  return { sieveSize: "", shape: "", color: "", clarity: "", pcs: "1", carat: "", ratePerCarat: "", amount: "" };
+}
+
+type Item = GoldItem | DiamondItem;
 
 export function PurchaseForm({ mode, actionUrl, purchaseType, vendors, initialValues, canDelete }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [items, setItems] = useState<PurchaseItem[]>(
+  const [items, setItems] = useState<Item[]>(
     initialValues?.items?.length
-      ? initialValues.items
-      : [purchaseType === "gold" ? emptyGoldItem() : emptyDiamondItem()]
+      ? (initialValues.items as Item[])
+      : [purchaseType === "gold" ? emptyGold() : emptyDiamond()]
   );
-  const [formValues, setFormValues] = useState({
-    vendorId: initialValues?.vendorId ?? vendors[0]?.id ?? "",
-    invoiceNo: initialValues?.invoiceNo ?? "",
-    invoiceDate: initialValues?.invoiceDate ?? "",
-    purchaseDate: initialValues?.purchaseDate ?? "",
-    gst: initialValues?.gst ?? "0",
-    otherCharges: initialValues?.otherCharges ?? "0",
-    remarks: initialValues?.remarks ?? "",
-    status: initialValues?.status ?? "DRAFT",
-  });
-  const total = items.reduce((sum, item) => sum + Number(item.amount || 0), 0) + Number(formValues.gst || 0) + Number(formValues.otherCharges || 0);
+  const [gst, setGst] = useState(initialValues?.gst ?? "0");
+  const [otherCharges, setOtherCharges] = useState(initialValues?.otherCharges ?? "0");
+
+  const itemsTotal = items.reduce((sum, item) => sum + Number((item as GoldItem).amount || 0), 0);
+  const grandTotal = itemsTotal + Number(gst || 0) + Number(otherCharges || 0);
+
+  function updateItem(index: number, key: string, value: string) {
+    setItems((current) =>
+      current.map((item, i) => (i === index ? { ...item, [key]: value } : item))
+    );
+  }
+
+  function removeRow(index: number) {
+    setItems((current) => (current.length > 1 ? current.filter((_, i) => i !== index) : current));
+  }
+
+  function addRow() {
+    setItems((current) => [...current, purchaseType === "gold" ? emptyGold() : emptyDiamond()]);
+  }
+
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault(); setLoading(true); setError(null);
+    event.preventDefault();
+    setLoading(true);
+    setError(null);
     try {
       const form = new FormData(event.currentTarget);
       form.set("items", JSON.stringify(items));
       const response = await fetch(actionUrl, { method: mode === "create" ? "POST" : "PATCH", body: form });
       const data = await response.json().catch(() => null);
-      if (!response.ok) throw new Error(data?.message || "Could not save purchase.");
+      if (!response.ok) throw new Error(data?.message ?? "Could not save purchase.");
       toast.success(mode === "create" ? "Purchase created." : "Purchase updated.");
       router.push(purchaseType === "gold" ? "/dashboard/gold-purchases" : "/dashboard/diamond-purchases");
       router.refresh();
-    } catch (submitError) {
-      const msg = submitError instanceof Error ? submitError.message : "Something went wrong.";
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Something went wrong.";
       setError(msg);
       toast.error(msg);
     } finally {
       setLoading(false);
     }
   }
-  async function onDelete() { if (!window.confirm("Delete this purchase? This cannot be undone.")) return; setLoading(true); setError(null); try { const response = await fetch(actionUrl, { method: "DELETE" }); const data = await response.json().catch(() => null); if (!response.ok) throw new Error(data?.message || "Could not delete purchase."); toast.success("Purchase deleted."); router.push(purchaseType === "gold" ? "/dashboard/gold-purchases" : "/dashboard/diamond-purchases"); router.refresh(); } catch (deleteError) { const msg = deleteError instanceof Error ? deleteError.message : "Something went wrong."; setError(msg); toast.error(msg); } finally { setLoading(false); } }
-  function updateItem(index: number, key: string, value: string) {
-    setItems((current) =>
-      current.map((item, i) =>
-        i === index ? { ...item, [key]: value, amount: key === "amount" ? value : item.amount } : item
-      )
-    );
+
+  async function onDelete() {
+    if (!window.confirm("Delete this purchase? This cannot be undone.")) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(actionUrl, { method: "DELETE" });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(data?.message ?? "Could not delete purchase.");
+      toast.success("Purchase deleted.");
+      router.push(purchaseType === "gold" ? "/dashboard/gold-purchases" : "/dashboard/diamond-purchases");
+      router.refresh();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Something went wrong.";
+      setError(msg);
+      toast.error(msg);
+    } finally {
+      setLoading(false);
+    }
   }
-  function addRow() { setItems((current) => [...current, purchaseType === "gold" ? emptyGoldItem() : emptyDiamondItem()]); }
-  function removeRow(index: number) { setItems((current) => current.length > 1 ? current.filter((_, i) => i !== index) : current); }
+
+  const backPath = purchaseType === "gold" ? "/dashboard/gold-purchases" : "/dashboard/diamond-purchases";
+
   return (
-    <Card className="border-border/60 bg-card/95 shadow-lg shadow-black/5">
-      <CardHeader>
-        <CardTitle className="text-2xl">{mode === "create" ? `Create ${purchaseType} purchase` : `Edit ${purchaseType} purchase`}</CardTitle>
-        <CardDescription>Capture the invoice and line items, then write inventory ledger entries automatically.</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {error ? <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p> : null}
-        <form className="space-y-6" onSubmit={onSubmit}>
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2"><Label htmlFor="vendorId">Vendor</Label><select id="vendorId" name="vendorId" className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={formValues.vendorId} onChange={(e) => setFormValues((c) => ({ ...c, vendorId: e.target.value }))}>{vendors.map((vendor) => <option key={vendor.id} value={vendor.id}>{vendor.name}</option>)}</select></div>
-            <div className="space-y-2"><Label htmlFor="status">Status</Label><select id="status" name="status" className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={formValues.status} onChange={(e) => setFormValues((c) => ({ ...c, status: e.target.value }))}><option value="DRAFT">Draft</option><option value="COMPLETED">Completed</option><option value="CANCELLED">Cancelled</option></select></div>
-            <div className="space-y-2"><Label htmlFor="invoiceNo">Invoice no</Label><Input id="invoiceNo" name="invoiceNo" value={formValues.invoiceNo} onChange={(e) => setFormValues((c) => ({ ...c, invoiceNo: e.target.value }))} /></div>
-            <div className="space-y-2"><Label htmlFor="invoiceDate">Invoice date</Label><Input id="invoiceDate" name="invoiceDate" type="date" value={formValues.invoiceDate} onChange={(e) => setFormValues((c) => ({ ...c, invoiceDate: e.target.value }))} /></div>
-            <div className="space-y-2"><Label htmlFor="purchaseDate">Purchase date</Label><Input id="purchaseDate" name="purchaseDate" type="date" value={formValues.purchaseDate} onChange={(e) => setFormValues((c) => ({ ...c, purchaseDate: e.target.value }))} /></div>
-            <div className="space-y-2"><Label htmlFor="gst">GST</Label><Input id="gst" name="gst" value={formValues.gst} onChange={(e) => setFormValues((c) => ({ ...c, gst: e.target.value }))} /></div>
-            <div className="space-y-2"><Label htmlFor="otherCharges">Other charges</Label><Input id="otherCharges" name="otherCharges" value={formValues.otherCharges} onChange={(e) => setFormValues((c) => ({ ...c, otherCharges: e.target.value }))} /></div>
-            <div className="md:col-span-2"><FileUpload kind={purchaseType === "gold" ? "gold-purchases" : "diamond-purchases"} variant="document" name="invoiceFileUrl" label="Invoice scan" initialUrl={initialValues?.invoiceFileUrl} /></div>
-          </div>
-          <input type="hidden" name="items" value={JSON.stringify(items)} />
-          <div className="space-y-3 rounded-2xl border p-4">
-            <div className="flex items-center justify-between">
-              <h3 className="font-medium">{purchaseType === "gold" ? "Gold items" : "Diamond items"}</h3>
-              <Button type="button" variant="outline" onClick={addRow}>Add row</Button>
-            </div>
-            <div className="space-y-3">
-              {items.map((item, index) => (
-                <div key={index} className="grid gap-3 rounded-xl border p-3 md:grid-cols-5">
-                  {purchaseType === "gold" ? (
-                    <>
-                      {["purity","grossWeight","pureWeight","ratePerGram","amount"].map((key) => <Input key={key} placeholder={key} value={item[key]} onChange={(e) => updateItem(index, key, e.target.value)} />)}
-                    </>
-                  ) : (
-                    <>
-                      {["sieveSize","shape","color","clarity","pcs","carat","ratePerCarat","amount"].map((key) => <Input key={key} placeholder={key} value={item[key]} onChange={(e) => updateItem(index, key, e.target.value)} />)}
-                    </>
-                  )}
-                  <div className="md:col-span-full flex justify-end">
-                    <Button type="button" variant="outline" onClick={() => removeRow(index)}>Remove</Button>
-                  </div>
-                </div>
+    <form onSubmit={onSubmit} className="space-y-6">
+      {error ? (
+        <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          {error}
+        </p>
+      ) : null}
+
+      {/* ── Header ──────────────────────────────────────────────────── */}
+      <SectionCard
+        title="Purchase header"
+        description="Vendor, invoice reference, and purchase date."
+        icon={ShoppingCart}
+        columns={2}
+      >
+        <FormField label="Vendor" required>
+          <select
+            name="vendorId"
+            defaultValue={initialValues?.vendorId ?? vendors[0]?.id ?? ""}
+            className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            {vendors.map((v) => (
+              <option key={v.id} value={v.id}>{v.name}</option>
+            ))}
+          </select>
+        </FormField>
+        <FormField label="Status">
+          <ReferenceSelect
+            name="status"
+            options={PURCHASE_STATUSES.map((s) => ({ value: s.value, label: s.label }))}
+            defaultValue={initialValues?.status ?? "DRAFT"}
+          />
+        </FormField>
+        <FormField label="Invoice number">
+          <Input
+            name="invoiceNo"
+            defaultValue={initialValues?.invoiceNo ?? ""}
+            placeholder="e.g. INV-2024-001"
+          />
+        </FormField>
+        <FormField label="Invoice date">
+          <DateInput name="invoiceDate" defaultValue={initialValues?.invoiceDate ?? ""} pastOnly />
+        </FormField>
+        <FormField label="Purchase date">
+          <DateInput name="purchaseDate" defaultValue={initialValues?.purchaseDate ?? ""} pastOnly />
+        </FormField>
+        <FormField label="Remarks" className="sm:col-span-2">
+          <Textarea
+            name="remarks"
+            rows={2}
+            defaultValue={initialValues?.remarks ?? ""}
+            placeholder="Any notes about this purchase…"
+          />
+        </FormField>
+        <div className="sm:col-span-2">
+          <FileUpload
+            kind={purchaseType === "gold" ? "gold-purchases" : "diamond-purchases"}
+            variant="document"
+            name="invoiceFileUrl"
+            label="Invoice scan / attachment"
+            initialUrl={initialValues?.invoiceFileUrl}
+          />
+        </div>
+      </SectionCard>
+
+      {/* ── Line items ──────────────────────────────────────────────── */}
+      <SectionCard
+        title={purchaseType === "gold" ? "Gold items" : "Diamond items"}
+        description={
+          purchaseType === "gold"
+            ? "One row per purity / lot. Weights in grams."
+            : "One row per sieve / quality lot."
+        }
+        icon={List}
+        headerRight={
+          <Button type="button" size="sm" variant="outline" onClick={addRow}>
+            <Plus className="mr-1 size-4" /> Add row
+          </Button>
+        }
+      >
+        <div className="sm:col-span-2 space-y-3">
+          {purchaseType === "gold"
+            ? (items as GoldItem[]).map((item, idx) => (
+                <GoldItemRow
+                  key={idx}
+                  item={item}
+                  index={idx}
+                  canRemove={items.length > 1}
+                  onChange={updateItem}
+                  onRemove={removeRow}
+                />
+              ))
+            : (items as DiamondItem[]).map((item, idx) => (
+                <DiamondItemRow
+                  key={idx}
+                  item={item}
+                  index={idx}
+                  canRemove={items.length > 1}
+                  onChange={updateItem}
+                  onRemove={removeRow}
+                />
               ))}
-            </div>
+        </div>
+      </SectionCard>
+
+      {/* ── Charges & total ─────────────────────────────────────────── */}
+      <SectionCard
+        title="Charges"
+        description="Additional charges added to the purchase total."
+        icon={Calculator}
+        columns={2}
+      >
+        <FormField label="GST amount (₹)">
+          <MoneyInput
+            name="gst"
+            value={gst}
+            onValueChange={setGst}
+          />
+        </FormField>
+        <FormField label="Other charges (₹)">
+          <MoneyInput
+            name="otherCharges"
+            value={otherCharges}
+            onValueChange={setOtherCharges}
+          />
+        </FormField>
+        <div className="sm:col-span-2 rounded-xl border bg-muted/40 px-4 py-3 text-sm">
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Items subtotal</span>
+            <span>{formatINR(itemsTotal)}</span>
           </div>
-          <div className="space-y-2"><Label htmlFor="remarks">Remarks</Label><Input id="remarks" name="remarks" value={formValues.remarks} onChange={(e) => setFormValues((c) => ({ ...c, remarks: e.target.value }))} /></div>
-          <div className="rounded-xl border bg-muted/40 p-4 text-sm">Estimated total: <span className="font-medium">{total.toFixed(2)}</span></div>
-          <div className="flex flex-wrap gap-3"><Button type="submit" disabled={loading}>{loading ? "Saving..." : mode === "create" ? "Create purchase" : "Save changes"}</Button><Button type="button" variant="outline" onClick={() => router.back()} disabled={loading}>Cancel</Button>{mode === "edit" && canDelete ? <Button type="button" variant="destructive" onClick={onDelete} disabled={loading}>Delete purchase</Button> : null}</div>
-        </form>
-      </CardContent>
-    </Card>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">GST</span>
+            <span>{formatINR(Number(gst || 0))}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Other charges</span>
+            <span>{formatINR(Number(otherCharges || 0))}</span>
+          </div>
+          <div className="mt-2 flex justify-between border-t pt-2 font-semibold">
+            <span>Grand total</span>
+            <span>{formatINR(grandTotal)}</span>
+          </div>
+        </div>
+      </SectionCard>
+
+      <FormActions
+        loading={loading}
+        saveLabel={mode === "create" ? `Create ${purchaseType} purchase` : "Save changes"}
+        onCancel={() => router.push(backPath)}
+        onDelete={mode === "edit" && canDelete ? onDelete : undefined}
+        deleteLabel="Delete purchase"
+        sticky
+      />
+    </form>
+  );
+}
+
+// ── Row sub-components ────────────────────────────────────────────────────────
+
+function GoldItemRow({
+  item,
+  index,
+  canRemove,
+  onChange,
+  onRemove,
+}: {
+  item: GoldItem;
+  index: number;
+  canRemove: boolean;
+  onChange: (index: number, key: string, value: string) => void;
+  onRemove: (index: number) => void;
+}) {
+  return (
+    <div className="rounded-xl border p-3 space-y-3">
+      <div className="grid gap-3 sm:grid-cols-5">
+        <FormField label="Purity">
+          <ReferenceSelect
+            name={`gold-purity-${index}`}
+            options={GOLD_PURITY}
+            value={item.purity}
+            onChange={(e) => onChange(index, "purity", e.target.value)}
+          />
+        </FormField>
+        <FormField label="Gross wt (g)">
+          <WeightInput
+            name={`gold-gross-${index}`}
+            unit="g"
+            value={item.grossWeight}
+            onValueChange={(v) => onChange(index, "grossWeight", v)}
+          />
+        </FormField>
+        <FormField label="Pure wt (g)">
+          <WeightInput
+            name={`gold-pure-${index}`}
+            unit="g"
+            value={item.pureWeight}
+            onValueChange={(v) => onChange(index, "pureWeight", v)}
+          />
+        </FormField>
+        <FormField label="Rate / g (₹)">
+          <MoneyInput
+            name={`gold-rate-${index}`}
+            value={item.ratePerGram}
+            onValueChange={(v) => onChange(index, "ratePerGram", v)}
+          />
+        </FormField>
+        <FormField label="Amount (₹)">
+          <MoneyInput
+            name={`gold-amt-${index}`}
+            value={item.amount}
+            onValueChange={(v) => onChange(index, "amount", v)}
+          />
+        </FormField>
+      </div>
+      {canRemove && (
+        <div className="flex justify-end">
+          <Button type="button" variant="ghost" size="sm" onClick={() => onRemove(index)} className="text-destructive hover:text-destructive">
+            <Trash2 className="mr-1 size-3.5" /> Remove
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DiamondItemRow({
+  item,
+  index,
+  canRemove,
+  onChange,
+  onRemove,
+}: {
+  item: DiamondItem;
+  index: number;
+  canRemove: boolean;
+  onChange: (index: number, key: string, value: string) => void;
+  onRemove: (index: number) => void;
+}) {
+  return (
+    <div className="rounded-xl border p-3 space-y-3">
+      <div className="grid gap-3 sm:grid-cols-4">
+        <FormField label="Sieve size">
+          <ReferenceSelect
+            name={`diamond-sieve-${index}`}
+            options={DIAMOND_SIEVES}
+            includeEmpty
+            emptyLabel="Select"
+            value={item.sieveSize}
+            onChange={(e) => onChange(index, "sieveSize", e.target.value)}
+          />
+        </FormField>
+        <FormField label="Shape">
+          <ReferenceSelect
+            name={`diamond-shape-${index}`}
+            options={DIAMOND_SHAPES}
+            includeEmpty
+            emptyLabel="Select"
+            value={item.shape}
+            onChange={(e) => onChange(index, "shape", e.target.value)}
+          />
+        </FormField>
+        <FormField label="Colour">
+          <ReferenceSelect
+            name={`diamond-color-${index}`}
+            options={DIAMOND_COLOURS}
+            includeEmpty
+            emptyLabel="Select"
+            value={item.color}
+            onChange={(e) => onChange(index, "color", e.target.value)}
+          />
+        </FormField>
+        <FormField label="Clarity">
+          <ReferenceSelect
+            name={`diamond-clarity-${index}`}
+            options={DIAMOND_CLARITY}
+            includeEmpty
+            emptyLabel="Select"
+            value={item.clarity}
+            onChange={(e) => onChange(index, "clarity", e.target.value)}
+          />
+        </FormField>
+        <FormField label="Pcs">
+          <Input
+            type="number"
+            min="1"
+            value={item.pcs}
+            onChange={(e) => onChange(index, "pcs", e.target.value)}
+          />
+        </FormField>
+        <FormField label="Carat (ct)">
+          <WeightInput
+            name={`diamond-carat-${index}`}
+            unit="ct"
+            value={item.carat}
+            onValueChange={(v) => onChange(index, "carat", v)}
+          />
+        </FormField>
+        <FormField label="Rate / ct (₹)">
+          <MoneyInput
+            name={`diamond-rate-${index}`}
+            value={item.ratePerCarat}
+            onValueChange={(v) => onChange(index, "ratePerCarat", v)}
+          />
+        </FormField>
+        <FormField label="Amount (₹)">
+          <MoneyInput
+            name={`diamond-amt-${index}`}
+            value={item.amount}
+            onValueChange={(v) => onChange(index, "amount", v)}
+          />
+        </FormField>
+      </div>
+      {canRemove && (
+        <div className="flex justify-end">
+          <Button type="button" variant="ghost" size="sm" onClick={() => onRemove(index)} className="text-destructive hover:text-destructive">
+            <Trash2 className="mr-1 size-3.5" /> Remove
+          </Button>
+        </div>
+      )}
+    </div>
   );
 }

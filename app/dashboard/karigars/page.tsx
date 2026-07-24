@@ -9,6 +9,8 @@ import { PaginationBar } from "@/components/ui/pagination-bar";
 import { parseListQuery } from "@/lib/list-query";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Hammer } from "lucide-react";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { formatINR } from "@/lib/formatters";
 
 type PageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -76,10 +78,10 @@ export default async function KarigarsPage({ searchParams }: PageProps) {
                     <td className="px-4 py-4 font-mono text-xs">{karigar.karigarCode}</td>
                     <td className="px-4 py-4">{karigar.name}</td>
                     <td className="px-4 py-4">{karigar.specialization || "—"}</td>
-                    <td className="px-4 py-4">{karigar.labourRate || "—"}</td>
+                    <td className="px-4 py-4">{karigar.labourRate ? formatINR(karigar.labourRate) : "—"}</td>
                     <td className="px-4 py-4">{karigar.pendingIssue}</td>
                     <td className="px-4 py-4">{karigar.pendingReceipt}</td>
-                    <td className="px-4 py-4">{karigar.status}</td>
+                    <td className="px-4 py-4"><StatusBadge status={karigar.status} /></td>
                     <td className="px-4 py-4">
                       <div className="flex items-center gap-3">
                         <Link

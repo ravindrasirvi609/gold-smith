@@ -8,6 +8,8 @@ import { PaginationBar } from "@/components/ui/pagination-bar";
 import { parseListQuery } from "@/lib/list-query";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Wrench } from "lucide-react";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { formatDate } from "@/lib/formatters";
 
 type PageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -30,10 +32,10 @@ export default async function IssuesPage({ searchParams }: PageProps) {
   return (
     <main className="min-h-screen bg-background text-foreground">
       <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-6 py-10">
-        <div className="flex items-end justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-sm text-muted-foreground">Manufacturing</p>
-            <h1 className="text-3xl font-semibold">Karigar Issues</h1>
+            <p className="text-sm font-medium text-muted-foreground">Manufacturing</p>
+            <h1 className="text-3xl font-semibold tracking-tight">Karigar issues</h1>
           </div>
           {hasPermission(session, "ISSUE_CREATE") ? (
             <Link href="/dashboard/manufacturing/issues/new">
@@ -67,11 +69,11 @@ export default async function IssuesPage({ searchParams }: PageProps) {
                 result.items.map((issue) => (
                   <tr key={issue.id} className="border-b last:border-b-0">
                     <td className="px-4 py-4 font-mono text-xs">{issue.issueNo}</td>
-                    <td className="px-4 py-4">{issue.issueDate || "—"}</td>
+                    <td className="px-4 py-4">{formatDate(issue.issueDate)}</td>
                     <td className="px-4 py-4">{issue.karigarName}</td>
                     <td className="px-4 py-4">{issue.goldCount}</td>
                     <td className="px-4 py-4">{issue.diamondCount}</td>
-                    <td className="px-4 py-4">{issue.status}</td>
+                    <td className="px-4 py-4"><StatusBadge status={issue.status} /></td>
                     <td className="px-4 py-4">
                       {hasPermission(session, "ISSUE_EDIT") ? (
                         <Link

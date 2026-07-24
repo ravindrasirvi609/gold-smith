@@ -10,6 +10,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ExportCsvButton } from "@/components/ui/export-csv-button";
 import { Building2 } from "lucide-react";
 import { parseListQuery } from "@/lib/list-query";
+import { StatusBadge } from "@/components/ui/status-badge";
 
 type PageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -87,7 +88,7 @@ export default async function VendorsPage({ searchParams }: PageProps) {
                     <td className="px-4 py-4">{vendor.mobile}</td>
                     <td className="px-4 py-4">{vendor.gstNumber || "—"}</td>
                     <td className="px-4 py-4">{vendor.vendorType}</td>
-                    <td className="px-4 py-4">{vendor.status}</td>
+                    <td className="px-4 py-4"><StatusBadge status={vendor.status} /></td>
                     <td className="px-4 py-4">
                       {hasPermission(session, "VENDOR_EDIT") ? (
                         <Link

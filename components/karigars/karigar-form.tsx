@@ -3,42 +3,307 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Hammer, MapPin, ShieldCheck, Wrench, Banknote, Paperclip } from "lucide-react";
+import {
+  FormField,
+  SectionCard,
+  FormActions,
+  ReferenceSelect,
+  CountryPicker,
+  StatePicker,
+  AadhaarInput,
+  PanInput,
+  GstInput,
+  MobileInput,
+  PincodeInput,
+  MoneyInput,
+  DateInput,
+} from "@/components/forms";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import type { KarigarFormValues } from "@/lib/admin-karigars";
+import { Textarea } from "@/components/ui/textarea";
 import { FileUpload } from "@/components/ui/file-upload";
+import {
+  GENDERS,
+  KARIGAR_SPECIALIZATIONS,
+  SKILL_LEVELS,
+  MAKING_CHARGE_BASIS,
+  ACTIVE_STATUSES,
+} from "@/lib/reference-data";
+import type { KarigarFormValues } from "@/lib/admin-karigars";
 
-type Props = { mode: "create" | "edit"; actionUrl: string; initialValues?: Partial<KarigarFormValues>; canDelete?: boolean };
+type Props = {
+  mode: "create" | "edit";
+  actionUrl: string;
+  initialValues?: Partial<KarigarFormValues>;
+  canDelete?: boolean;
+};
+
 export function KarigarForm({ mode, actionUrl, initialValues, canDelete }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [formValues, setFormValues] = useState<KarigarFormValues>({
-    name: initialValues?.name ?? "",
-    fatherName: initialValues?.fatherName ?? "",
-    mobile: initialValues?.mobile ?? "",
-    alternateMobile: initialValues?.alternateMobile ?? "",
-    email: initialValues?.email ?? "",
-    aadhaar: initialValues?.aadhaar ?? "",
-    pan: initialValues?.pan ?? "",
-    gst: initialValues?.gst ?? "",
-    address: initialValues?.address ?? "",
-    city: initialValues?.city ?? "",
-    state: initialValues?.state ?? "",
-    pincode: initialValues?.pincode ?? "",
-    country: initialValues?.country ?? "India",
-    specialization: initialValues?.specialization ?? "",
-    labourType: initialValues?.labourType ?? "PER_GRAM",
-    labourRate: initialValues?.labourRate ?? "",
-    openingBalance: initialValues?.openingBalance ?? "0",
-    creditBalance: initialValues?.creditBalance ?? "0",
-    joiningDate: initialValues?.joiningDate ?? "",
-    remarks: initialValues?.remarks ?? "",
-    status: initialValues?.status ?? "ACTIVE",
-  });
-  async function onSubmit(event: React.FormEvent<HTMLFormElement>) { event.preventDefault(); setLoading(true); setError(null); try { const response = await fetch(actionUrl, { method: mode === "create" ? "POST" : "PATCH", body: new FormData(event.currentTarget) }); const data = await response.json().catch(() => null); if (!response.ok) throw new Error(data?.message || "Could not save the karigar."); toast.success(mode === "create" ? "Karigar created." : "Karigar updated."); router.push("/dashboard/karigars"); router.refresh(); } catch (submitError) { const msg = submitError instanceof Error ? submitError.message : "Something went wrong."; setError(msg); toast.error(msg); } finally { setLoading(false); } }
-  async function onDelete() { if (!window.confirm("Delete this karigar? This cannot be undone.")) return; setLoading(true); setError(null); try { const response = await fetch(actionUrl, { method: "DELETE" }); const data = await response.json().catch(() => null); if (!response.ok) throw new Error(data?.message || "Could not delete the karigar."); toast.success("Karigar deleted."); router.push("/dashboard/karigars"); router.refresh(); } catch (deleteError) { const msg = deleteError instanceof Error ? deleteError.message : "Something went wrong."; setError(msg); toast.error(msg); } finally { setLoading(false); } }
-  return (<Card className="border-border/60 bg-card/95 shadow-lg shadow-black/5"><CardHeader><CardTitle className="text-2xl">{mode === "create" ? "Create karigar" : "Edit karigar"}</CardTitle><CardDescription>Track craftsman records for issue, receipt, and labour settlement.</CardDescription></CardHeader><CardContent className="space-y-4">{error ? <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p> : null}<form className="grid gap-4 md:grid-cols-2" onSubmit={onSubmit}>{["name","fatherName","mobile","alternateMobile","email","aadhaar","pan","gst","city","state","pincode","country","specialization","labourRate","openingBalance","creditBalance"].map((key) => (<div className="space-y-2" key={key}><Label htmlFor={key}>{key.replace(/([A-Z])/g, " $1")}</Label><Input id={key} name={key} value={formValues[key as keyof KarigarFormValues] as string} onChange={(event) => setFormValues((current) => ({ ...current, [key]: event.target.value }))} /></div>))}<div className="space-y-2"><Label htmlFor="joiningDate">Joining date</Label><Input id="joiningDate" name="joiningDate" type="date" value={formValues.joiningDate} onChange={(event) => setFormValues((current) => ({ ...current, joiningDate: event.target.value }))} /></div><div className="space-y-2"><Label htmlFor="labourType">Labour type</Label><select id="labourType" name="labourType" className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={formValues.labourType} onChange={(event) => setFormValues((current) => ({ ...current, labourType: event.target.value as KarigarFormValues["labourType"] }))}><option value="PER_GRAM">Per gram</option><option value="PER_PIECE">Per piece</option><option value="FIXED">Fixed</option></select></div><div className="space-y-2"><Label htmlFor="status">Status</Label><select id="status" name="status" className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={formValues.status} onChange={(event) => setFormValues((current) => ({ ...current, status: event.target.value as KarigarFormValues["status"] }))}><option value="ACTIVE">ACTIVE</option><option value="INACTIVE">INACTIVE</option><option value="BLOCKED">BLOCKED</option></select></div><div className="space-y-2 md:col-span-2"><Label htmlFor="address">Address</Label><Input id="address" name="address" value={formValues.address} onChange={(event) => setFormValues((current) => ({ ...current, address: event.target.value }))} /></div><div className="space-y-2 md:col-span-2"><Label htmlFor="remarks">Remarks</Label><Input id="remarks" name="remarks" value={formValues.remarks} onChange={(event) => setFormValues((current) => ({ ...current, remarks: event.target.value }))} /></div><div className="md:col-span-2 grid gap-4 sm:grid-cols-3"><FileUpload kind="karigars" variant="image" name="photoUrl" label="Photo" initialUrl={initialValues?.photoUrl} /><FileUpload kind="karigars" variant="document" name="aadhaarDocUrl" label="Aadhaar document" initialUrl={initialValues?.aadhaarDocUrl} /><FileUpload kind="karigars" variant="document" name="panDocUrl" label="PAN document" initialUrl={initialValues?.panDocUrl} /></div><div className="md:col-span-2 flex flex-wrap gap-3"><Button type="submit" disabled={loading}>{loading ? "Saving..." : mode === "create" ? "Create karigar" : "Save changes"}</Button><Button type="button" variant="outline" onClick={() => router.back()} disabled={loading}>Cancel</Button>{mode === "edit" && canDelete ? <Button type="button" variant="destructive" onClick={onDelete} disabled={loading}>Delete karigar</Button> : null}</div></form></CardContent></Card>);
+  const [country, setCountry] = useState(initialValues?.country ?? "IN");
+
+  async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(actionUrl, {
+        method: mode === "create" ? "POST" : "PATCH",
+        body: new FormData(event.currentTarget),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(data?.message ?? "Could not save the karigar.");
+      toast.success(mode === "create" ? "Karigar created." : "Karigar updated.");
+      router.push("/dashboard/karigars");
+      router.refresh();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Something went wrong.";
+      setError(msg);
+      toast.error(msg);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function onDelete() {
+    if (!window.confirm("Delete this karigar? This cannot be undone.")) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(actionUrl, { method: "DELETE" });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(data?.message ?? "Could not delete the karigar.");
+      toast.success("Karigar deleted.");
+      router.push("/dashboard/karigars");
+      router.refresh();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Something went wrong.";
+      setError(msg);
+      toast.error(msg);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <form onSubmit={onSubmit} className="space-y-6">
+      {error ? (
+        <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          {error}
+        </p>
+      ) : null}
+
+      {/* ── Identity ─────────────────────────────────────────────────── */}
+      <SectionCard
+        title="Identity"
+        description="Basic personal details and account status."
+        icon={Hammer}
+        columns={2}
+      >
+        <FormField label="Full name" required>
+          <Input
+            name="name"
+            defaultValue={initialValues?.name ?? ""}
+            placeholder="e.g. Ramesh Kumar"
+          />
+        </FormField>
+        <FormField label="Father's name">
+          <Input
+            name="fatherName"
+            defaultValue={initialValues?.fatherName ?? ""}
+            placeholder="e.g. Suresh Kumar"
+          />
+        </FormField>
+        <FormField label="Gender">
+          <ReferenceSelect
+            name="gender"
+            options={GENDERS}
+            includeEmpty
+            emptyLabel="Select gender"
+            defaultValue={initialValues?.gender ?? ""}
+          />
+        </FormField>
+        <FormField label="Status" required>
+          <ReferenceSelect
+            name="status"
+            options={ACTIVE_STATUSES.map((s) => ({ value: s.value, label: s.label }))}
+            defaultValue={initialValues?.status ?? "ACTIVE"}
+          />
+        </FormField>
+        <FormField label="Joining date">
+          <DateInput name="joiningDate" defaultValue={initialValues?.joiningDate ?? ""} pastOnly />
+        </FormField>
+        <FormField label="Remarks" className="sm:col-span-2">
+          <Textarea
+            name="remarks"
+            rows={2}
+            defaultValue={initialValues?.remarks ?? ""}
+            placeholder="Any notes about this karigar…"
+          />
+        </FormField>
+      </SectionCard>
+
+      {/* ── Contact ──────────────────────────────────────────────────── */}
+      <SectionCard
+        title="Contact"
+        description="Phone, email, and residential address."
+        icon={MapPin}
+        columns={2}
+      >
+        <FormField label="Primary mobile" required>
+          <MobileInput name="mobile" defaultValue={initialValues?.mobile ?? ""} />
+        </FormField>
+        <FormField label="Alternate mobile">
+          <MobileInput name="alternateMobile" defaultValue={initialValues?.alternateMobile ?? ""} />
+        </FormField>
+        <FormField label="Email" className="sm:col-span-2">
+          <Input
+            name="email"
+            type="email"
+            defaultValue={initialValues?.email ?? ""}
+            placeholder="karigar@example.com"
+          />
+        </FormField>
+        <FormField label="Address" className="sm:col-span-2">
+          <Textarea
+            name="address"
+            rows={2}
+            defaultValue={initialValues?.address ?? ""}
+            placeholder="Street / building / locality"
+          />
+        </FormField>
+        <FormField label="City">
+          <Input name="city" defaultValue={initialValues?.city ?? ""} placeholder="e.g. Jaipur" />
+        </FormField>
+        <FormField label="Pincode">
+          <PincodeInput name="pincode" defaultValue={initialValues?.pincode ?? ""} />
+        </FormField>
+        <FormField label="Country">
+          <CountryPicker
+            name="country"
+            defaultValue={initialValues?.country ?? "IN"}
+            onChange={setCountry}
+          />
+        </FormField>
+        <FormField label="State / province">
+          <StatePicker
+            name="state"
+            country={country}
+            defaultValue={initialValues?.state ?? ""}
+          />
+        </FormField>
+      </SectionCard>
+
+      {/* ── KYC ──────────────────────────────────────────────────────── */}
+      <SectionCard
+        title="KYC"
+        description="Government identifiers for compliance and labour reporting."
+        icon={ShieldCheck}
+        columns={2}
+      >
+        <FormField label="Aadhaar number" hint="12-digit unique ID">
+          <AadhaarInput name="aadhaar" defaultValue={initialValues?.aadhaar ?? ""} />
+        </FormField>
+        <FormField label="PAN number" hint="10-character PAN">
+          <PanInput name="pan" defaultValue={initialValues?.pan ?? ""} />
+        </FormField>
+        <FormField label="GST number" hint="Required if karigar is GST-registered">
+          <GstInput name="gst" defaultValue={initialValues?.gst ?? ""} />
+        </FormField>
+      </SectionCard>
+
+      {/* ── Skills ───────────────────────────────────────────────────── */}
+      <SectionCard
+        title="Skills"
+        description="Craft specialization and proficiency."
+        icon={Wrench}
+        columns={2}
+      >
+        <FormField label="Specialization">
+          <ReferenceSelect
+            name="specialization"
+            options={KARIGAR_SPECIALIZATIONS}
+            includeEmpty
+            emptyLabel="Select specialization"
+            defaultValue={initialValues?.specialization ?? ""}
+          />
+        </FormField>
+        <FormField label="Skill level">
+          <ReferenceSelect
+            name="skillLevel"
+            options={SKILL_LEVELS}
+            includeEmpty
+            emptyLabel="Select level"
+            defaultValue={initialValues?.skillLevel ?? ""}
+          />
+        </FormField>
+      </SectionCard>
+
+      {/* ── Compensation ─────────────────────────────────────────────── */}
+      <SectionCard
+        title="Compensation"
+        description="Labour rate, balances, and settlement basis."
+        icon={Banknote}
+        columns={2}
+      >
+        <FormField label="Labour basis" required>
+          <ReferenceSelect
+            name="labourType"
+            options={MAKING_CHARGE_BASIS}
+            defaultValue={initialValues?.labourType ?? "PER_GRAM"}
+          />
+        </FormField>
+        <FormField label="Labour rate (₹)" hint="Per unit based on labour basis above">
+          <MoneyInput name="labourRate" defaultValue={initialValues?.labourRate ?? ""} />
+        </FormField>
+        <FormField label="Opening balance (₹)">
+          <MoneyInput name="openingBalance" defaultValue={initialValues?.openingBalance ?? "0"} />
+        </FormField>
+        <FormField label="Credit balance (₹)">
+          <MoneyInput name="creditBalance" defaultValue={initialValues?.creditBalance ?? "0"} />
+        </FormField>
+      </SectionCard>
+
+      {/* ── Documents ────────────────────────────────────────────────── */}
+      <SectionCard
+        title="Documents"
+        description="Photo and identity documents."
+        icon={Paperclip}
+        columns={3}
+      >
+        <FileUpload
+          kind="karigars"
+          variant="image"
+          name="photoUrl"
+          label="Photo"
+          initialUrl={initialValues?.photoUrl}
+        />
+        <FileUpload
+          kind="karigars"
+          variant="document"
+          name="aadhaarDocUrl"
+          label="Aadhaar card"
+          initialUrl={initialValues?.aadhaarDocUrl}
+        />
+        <FileUpload
+          kind="karigars"
+          variant="document"
+          name="panDocUrl"
+          label="PAN card"
+          initialUrl={initialValues?.panDocUrl}
+        />
+      </SectionCard>
+
+      <FormActions
+        loading={loading}
+        saveLabel={mode === "create" ? "Create karigar" : "Save changes"}
+        onCancel={() => router.back()}
+        onDelete={mode === "edit" && canDelete ? onDelete : undefined}
+        deleteLabel="Delete karigar"
+        sticky
+      />
+    </form>
+  );
 }

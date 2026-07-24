@@ -8,6 +8,8 @@ import { parseListQuery } from "@/lib/list-query";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ExportCsvButton } from "@/components/ui/export-csv-button";
 import { Wallet } from "lucide-react";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { formatINR } from "@/lib/formatters";
 
 type PageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -33,8 +35,11 @@ export default async function PaymentsPage({ searchParams }: PageProps) {
   return (
     <main className="min-h-screen bg-background text-foreground">
       <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-6 py-10">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-semibold">Payments</h1>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-sm font-medium text-muted-foreground">Sales</p>
+            <h1 className="text-3xl font-semibold tracking-tight">Payments</h1>
+          </div>
           <ExportCsvButton endpoint="/api/payments/export" />
         </div>
 
@@ -67,8 +72,8 @@ export default async function PaymentsPage({ searchParams }: PageProps) {
                     <td className="px-4 py-4">{payment.invoiceNo}</td>
                     <td className="px-4 py-4">{payment.customerName}</td>
                     <td className="px-4 py-4">{payment.paymentType}</td>
-                    <td className="px-4 py-4">{payment.amount}</td>
-                    <td className="px-4 py-4">{payment.status}</td>
+                    <td className="px-4 py-4 tabular-nums">{formatINR(payment.amount)}</td>
+                    <td className="px-4 py-4"><StatusBadge status={payment.status} /></td>
                     <td className="px-4 py-4">
                       {payment.attachmentUrl ? (
                         <a

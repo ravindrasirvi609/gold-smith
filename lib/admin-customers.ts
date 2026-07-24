@@ -40,6 +40,11 @@ export type CustomerFormValues = {
   country: string;
   remarks: string;
   status: "ACTIVE" | "INACTIVE" | "BLOCKED";
+  // Extended fields (Workstream 3a)
+  salutation?: string;
+  maritalStatus?: string;
+  customerTier?: string;
+  preferredContactChannel?: string;
   photoUrl?: string;
   idProofUrl?: string;
 };
@@ -138,6 +143,10 @@ export async function getCustomerById(id: string) {
     country: String(customer.country ?? ""),
     remarks: String(customer.remarks ?? ""),
     status: (customer.status ?? "ACTIVE") as CustomerFormValues["status"],
+    salutation: String(customer.salutation ?? ""),
+    maritalStatus: String(customer.maritalStatus ?? ""),
+    customerTier: String(customer.customerTier ?? ""),
+    preferredContactChannel: String(customer.preferredContactChannel ?? ""),
     photoUrl: String(customer.photoUrl ?? ""),
     idProofUrl: String(customer.idProofUrl ?? ""),
   };
@@ -166,6 +175,10 @@ export async function createCustomer(input: CustomerFormValues) {
     country: normalizeText(input.country),
     remarks: normalizeText(input.remarks),
     status: input.status,
+    salutation: normalizeText(input.salutation ?? ""),
+    maritalStatus: normalizeText(input.maritalStatus ?? ""),
+    customerTier: normalizeText(input.customerTier ?? ""),
+    preferredContactChannel: normalizeText(input.preferredContactChannel ?? ""),
     photoUrl: normalizeText(input.photoUrl ?? ""),
     idProofUrl: normalizeText(input.idProofUrl ?? ""),
     createdAt: now,
@@ -201,6 +214,10 @@ export async function updateCustomer(id: string, input: CustomerFormValues) {
         country: normalizeText(input.country),
         remarks: normalizeText(input.remarks),
         status: input.status,
+        salutation: normalizeText(input.salutation ?? ""),
+        maritalStatus: normalizeText(input.maritalStatus ?? ""),
+        customerTier: normalizeText(input.customerTier ?? ""),
+        preferredContactChannel: normalizeText(input.preferredContactChannel ?? ""),
         photoUrl: normalizeText(input.photoUrl ?? ""),
         idProofUrl: normalizeText(input.idProofUrl ?? ""),
         updatedAt: new Date(),
