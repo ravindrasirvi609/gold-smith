@@ -166,5 +166,15 @@ async function doEnsureIndexes(): Promise<void> {
 
     // Sequences
     db.collection("sequences").createIndex({ _id: 1 }, { name: "id" }),
+
+    // Reference data — unique per (kind, value) so we can't create dupes
+    db.collection("referenceData").createIndex(
+      { kind: 1, value: 1 },
+      { unique: true, name: "kind_value_unique" }
+    ),
+    db.collection("referenceData").createIndex(
+      { kind: 1, label: 1 },
+      { name: "kind_label" }
+    ),
   ]);
 }

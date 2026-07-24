@@ -78,6 +78,13 @@ const ITEMS: { group: string; items: PaletteAction[] }[] = [
     items: [
       { label: "Audit log", href: "/dashboard/audit-log", Icon: Shield },
       { label: "Settings", href: "/dashboard/settings", Icon: FileText },
+      {
+        label: "Reference data",
+        href: "/dashboard/settings/reference-data",
+        Icon: FileText,
+        keywords: ["catalog", "options", "specialization", "category"],
+      },
+      { label: "My sessions", href: "/dashboard/account/sessions", Icon: Shield },
     ],
   },
   {
