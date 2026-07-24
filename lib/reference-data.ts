@@ -15,15 +15,13 @@
  *   • EDITABLE catalogs — the shop owner adds to these over time
  *     (jewellery sub-categories, karigar specializations, sale types).
  *     They live in the MongoDB `referenceData` collection and are read
- *     via `getEditableOptions(kind)` in server components. The static
- *     seed below is what `npm run seed:reference-data` inserts on first
- *     setup.
+ *     via the server-only `lib/reference-data.server.ts` helper. The
+ *     static seed below is what `npm run seed:reference-data` inserts
+ *     on first setup.
  *
  * All labels are the exact string we want to display in the UI. All
  * values are the exact string stored in the database.
  */
-
-import { getDb } from "@/lib/mongodb";
 
 // ---------------------------------------------------------------------------
 // Base type
@@ -625,46 +623,18 @@ export function findStatus(value: string): StatusOption | undefined {
 }
 
 // ---------------------------------------------------------------------------
-// Editable catalogs — loaded from MongoDB `referenceData` collection
+// Editable catalogs
 // ---------------------------------------------------------------------------
 
 /**
- * Kinds of user-editable reference data. Add new kinds here as needed —
- * seed the defaults in scripts/seed-reference-data.mjs.
+ * Kinds of user-editable reference data. Add new kinds here as needed.
+ * The server-side lookup lives in `lib/reference-data.server.ts`.
  */
 export type EditableKind =
   | "jewellery-subcategory"
   | "karigar-specialization"
   | "sale-type"
   | "approval-purpose";
-
-/**
- * Return every option for one editable kind, sorted by label.
- * Falls back to the static seed if no rows have been created yet, so
- * fresh installs work before the seed script has been run.
- */
-export async function getEditableOptions(
-  kind: EditableKind
-): Promise<Option[]> {
-  const db = await getDb();
-  const rows = await db
-    .collection("referenceData")
-    .find({ kind, isActive: { $ne: false } })
-    .sort({ label: 1 })
-    .toArray();
-
-  if (rows.length) {
-    return rows.map((row) => ({
-      value: String(row.value ?? ""),
-      label: String(row.label ?? ""),
-      hint: row.hint ? String(row.hint) : undefined,
-    }));
-  }
-
-  // Fallback: static seed. Keeps forms working before the reference-data
-  // seed has been run.
-  return STATIC_EDITABLE_SEED[kind]?.slice() ?? [];
-}
 
 /**
  * Static defaults for each editable kind. `npm run seed:reference-data`

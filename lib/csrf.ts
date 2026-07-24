@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import { cookies } from "next/headers";
+import type { ResponseCookie } from "next/dist/compiled/@edge-runtime/cookies";
 
 /**
  * Double-submit-cookie CSRF protection.
@@ -27,7 +28,7 @@ function newToken(): string {
 /**
  * Shared cookie settings for issuing the readable CSRF token cookie.
  */
-export function getCsrfCookieOptions() {
+export function getCsrfCookieOptions(): Partial<ResponseCookie> {
   return {
     httpOnly: false,
     secure: process.env.NODE_ENV === "production",
