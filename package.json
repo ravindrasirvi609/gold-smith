@@ -9,7 +9,8 @@
     "lint": "eslint",
     "seed:access-control": "node scripts/seed-access-control.mjs",
     "seed:admin-user": "node scripts/seed-admin-user.mjs",
-    "seed:reference-data": "node scripts/seed-reference-data.mjs"
+    "seed:reference-data": "node scripts/seed-reference-data.mjs",
+    "seed:demo": "node scripts/seed-demo-data.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1093.0",
