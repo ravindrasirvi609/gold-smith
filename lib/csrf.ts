@@ -25,23 +25,27 @@ function newToken(): string {
 }
 
 /**
- * Ensure the current response carries a CSRF cookie. Call this from
- * protected page layouts / server components before rendering forms.
+ * Shared cookie settings for issuing the readable CSRF token cookie.
  */
-export async function ensureCsrfCookie(): Promise<string> {
-  const jar = await cookies();
-  const existing = jar.get(CSRF_COOKIE)?.value;
-  if (existing && existing.length === 64) return existing;
-
-  const token = newToken();
-  jar.set(CSRF_COOKIE, token, {
+export function getCsrfCookieOptions() {
+  return {
     httpOnly: false,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
     maxAge: 60 * 60 * 24 * 30,
-  });
-  return token;
+  };
+}
+
+/**
+ * Generate a new CSRF token value and the cookie options needed to persist it.
+ * Cookie writes must happen in a Route Handler or Server Action.
+ */
+export function createCsrfCookie() {
+  return {
+    token: newToken(),
+    options: getCsrfCookieOptions(),
+  };
 }
 
 /**

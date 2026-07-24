@@ -1,12 +1,11 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
-import { ensureCsrfCookie } from "@/lib/csrf";
 import { CommandPalette } from "@/components/command-palette";
+import { CsrfCookieBootstrap } from "@/components/csrf-cookie-bootstrap";
 
 /**
- * Dashboard layout: guards the /dashboard subtree, ensures every
- * authenticated request carries a fresh CSRF token cookie so client-side
- * form submissions can read it, and mounts the global ⌘K command palette.
+ * Dashboard layout: guards the /dashboard subtree and mounts the client-side
+ * CSRF bootstrap plus the global ⌘K command palette.
  */
 export default async function DashboardLayout({
   children,
@@ -18,11 +17,10 @@ export default async function DashboardLayout({
     redirect("/login");
   }
 
-  await ensureCsrfCookie();
-
   return (
     <>
       {children}
+      <CsrfCookieBootstrap />
       <CommandPalette />
     </>
   );
