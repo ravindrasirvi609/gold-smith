@@ -6,6 +6,9 @@ import { ListToolbar } from "@/components/ui/list-toolbar";
 import { PaginationBar } from "@/components/ui/pagination-bar";
 import { RowActionButton } from "@/components/ui/row-action-button";
 import { parseListQuery } from "@/lib/list-query";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ExportCsvButton } from "@/components/ui/export-csv-button";
+import { Receipt } from "lucide-react";
 
 type PageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -32,7 +35,10 @@ export default async function InvoicesPage({ searchParams }: PageProps) {
   return (
     <main className="min-h-screen bg-background text-foreground">
       <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-6 py-10">
-        <h1 className="text-3xl font-semibold">Invoices</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-semibold">Invoices</h1>
+          <ExportCsvButton endpoint="/api/invoices/export" />
+        </div>
 
         <div className="mt-6">
           <ListToolbar
@@ -79,9 +85,10 @@ export default async function InvoicesPage({ searchParams }: PageProps) {
                             <RowActionButton
                               url={`/api/invoices/${invoice.id}/cancel`}
                               method="POST"
-                              confirm={`Cancel invoice ${invoice.invoiceNo}? Products will be returned to stock and any linked payments refunded.`}
+                              tone="warning"
+                              confirmTitle={`Cancel invoice ${invoice.invoiceNo}?`}
+                              confirmDescription="Products on this invoice will be returned to stock and any linked payments will be marked as refunded. The invoice will still be visible for audit purposes."
                               successMessage="Invoice cancelled."
-                              className="text-amber-700 dark:text-amber-400"
                             >
                               Cancel
                             </RowActionButton>
@@ -90,9 +97,10 @@ export default async function InvoicesPage({ searchParams }: PageProps) {
                             <RowActionButton
                               url={`/api/invoices/${invoice.id}`}
                               method="DELETE"
-                              confirm={`Delete draft invoice ${invoice.invoiceNo}?`}
+                              tone="danger"
+                              confirmTitle={`Delete draft invoice ${invoice.invoiceNo}?`}
+                              confirmDescription="This will permanently delete the draft. Only drafts can be deleted — anything past draft must be cancelled instead."
                               successMessage="Invoice deleted."
-                              className="text-destructive"
                             >
                               Delete
                             </RowActionButton>
@@ -104,11 +112,12 @@ export default async function InvoicesPage({ searchParams }: PageProps) {
                 ))
               ) : (
                 <tr>
-                  <td
-                    className="px-4 py-8 text-muted-foreground"
-                    colSpan={hasActions ? 6 : 5}
-                  >
-                    No invoices found.
+                  <td colSpan={hasActions ? 6 : 5}>
+                    <EmptyState
+                      icon={Receipt}
+                      title="No invoices found"
+                      description="Convert an approval to a sale or bill directly from stock."
+                    />
                   </td>
                 </tr>
               )}

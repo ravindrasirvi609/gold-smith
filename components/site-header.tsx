@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getSession } from "@/lib/auth";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { SiteDesktopNavigation, SiteMobileNavigation } from "@/components/site-navigation";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export async function SiteHeader() {
   const session = await getSession();
@@ -33,6 +34,7 @@ export async function SiteHeader() {
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">{session.email}</p>
                 </div>
+                <ThemeToggle />
                 <LogoutButton />
               </div>
             </>

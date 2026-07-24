@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -47,10 +48,13 @@ export function UserForm({ mode, actionUrl, roles, initialValues }: UserFormProp
         throw new Error(data?.message || "Could not save the user.");
       }
 
+      toast.success(mode === "create" ? "User created." : "User updated.");
       router.push("/dashboard/users");
       router.refresh();
     } catch (error) {
-      setError(error instanceof Error ? error.message : "Something went wrong.");
+      const msg = error instanceof Error ? error.message : "Something went wrong.";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }

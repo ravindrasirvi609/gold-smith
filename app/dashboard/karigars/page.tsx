@@ -7,6 +7,8 @@ import { EntityAvatar } from "@/components/ui/entity-avatar";
 import { ListToolbar } from "@/components/ui/list-toolbar";
 import { PaginationBar } from "@/components/ui/pagination-bar";
 import { parseListQuery } from "@/lib/list-query";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Hammer } from "lucide-react";
 
 type PageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -79,23 +81,33 @@ export default async function KarigarsPage({ searchParams }: PageProps) {
                     <td className="px-4 py-4">{karigar.pendingReceipt}</td>
                     <td className="px-4 py-4">{karigar.status}</td>
                     <td className="px-4 py-4">
-                      {hasPermission(session, "KARIGAR_EDIT") ? (
+                      <div className="flex items-center gap-3">
                         <Link
-                          href={`/dashboard/karigars/${karigar.id}/edit`}
+                          href={`/dashboard/karigars/${karigar.id}/reconciliation`}
                           className="text-sm underline underline-offset-4"
                         >
-                          Edit
+                          Recon
                         </Link>
-                      ) : (
-                        <span className="text-muted-foreground">No actions</span>
-                      )}
+                        {hasPermission(session, "KARIGAR_EDIT") ? (
+                          <Link
+                            href={`/dashboard/karigars/${karigar.id}/edit`}
+                            className="text-sm underline underline-offset-4"
+                          >
+                            Edit
+                          </Link>
+                        ) : null}
+                      </div>
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td className="px-4 py-8 text-muted-foreground" colSpan={9}>
-                    No karigars found.
+                  <td colSpan={9}>
+                    <EmptyState
+                      icon={Hammer}
+                      title="No karigars found"
+                      description="Register a karigar to issue material and track receipts."
+                    />
                   </td>
                 </tr>
               )}

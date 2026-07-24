@@ -9,6 +9,8 @@ import {
 import { ListToolbar } from "@/components/ui/list-toolbar";
 import { PaginationBar } from "@/components/ui/pagination-bar";
 import { parseListQuery } from "@/lib/list-query";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Gem } from "lucide-react";
 
 type PageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -114,8 +116,12 @@ export default async function DiamondPurchasesPage({ searchParams }: PageProps) 
                 ))
               ) : (
                 <tr>
-                  <td className="px-4 py-8 text-muted-foreground" colSpan={7}>
-                    No diamond purchases found.
+                  <td colSpan={7}>
+                    <EmptyState
+                      icon={Gem}
+                      title="No diamond purchases yet"
+                      description="Create a purchase to start the diamond ledger."
+                    />
                   </td>
                 </tr>
               )}

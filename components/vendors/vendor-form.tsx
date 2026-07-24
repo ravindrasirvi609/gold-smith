@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -48,10 +49,13 @@ export function VendorForm({ mode, actionUrl, initialValues, canDelete }: Props)
       const response = await fetch(actionUrl, { method: mode === "create" ? "POST" : "PATCH", body: new FormData(event.currentTarget) });
       const data = await response.json().catch(() => null);
       if (!response.ok) throw new Error(data?.message || "Could not save the vendor.");
+      toast.success(mode === "create" ? "Vendor created." : "Vendor updated.");
       router.push("/dashboard/vendors");
       router.refresh();
     } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : "Something went wrong.");
+      const msg = submitError instanceof Error ? submitError.message : "Something went wrong.";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -65,10 +69,13 @@ export function VendorForm({ mode, actionUrl, initialValues, canDelete }: Props)
       const response = await fetch(actionUrl, { method: "DELETE" });
       const data = await response.json().catch(() => null);
       if (!response.ok) throw new Error(data?.message || "Could not delete the vendor.");
+      toast.success("Vendor deleted.");
       router.push("/dashboard/vendors");
       router.refresh();
     } catch (deleteError) {
-      setError(deleteError instanceof Error ? deleteError.message : "Something went wrong.");
+      const msg = deleteError instanceof Error ? deleteError.message : "Something went wrong.";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }

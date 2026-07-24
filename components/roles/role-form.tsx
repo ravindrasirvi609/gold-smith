@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -54,10 +55,13 @@ export function RoleForm({ mode, actionUrl, permissions, canDelete, initialValue
         throw new Error(data?.message || "Could not save the role.");
       }
 
+      toast.success(mode === "create" ? "Role created." : "Role updated.");
       router.push("/dashboard/roles");
       router.refresh();
     } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : "Something went wrong.");
+      const msg = submitError instanceof Error ? submitError.message : "Something went wrong.";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -79,10 +83,13 @@ export function RoleForm({ mode, actionUrl, permissions, canDelete, initialValue
         throw new Error(data?.message || "Could not delete the role.");
       }
 
+      toast.success("Role deleted.");
       router.push("/dashboard/roles");
       router.refresh();
     } catch (deleteError) {
-      setError(deleteError instanceof Error ? deleteError.message : "Something went wrong.");
+      const msg = deleteError instanceof Error ? deleteError.message : "Something went wrong.";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }

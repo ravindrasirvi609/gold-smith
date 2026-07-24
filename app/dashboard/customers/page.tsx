@@ -7,6 +7,9 @@ import { EntityAvatar } from "@/components/ui/entity-avatar";
 import { ListToolbar } from "@/components/ui/list-toolbar";
 import { PaginationBar } from "@/components/ui/pagination-bar";
 import { parseListQuery } from "@/lib/list-query";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ExportCsvButton } from "@/components/ui/export-csv-button";
+import { Users } from "lucide-react";
 
 type PageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -35,11 +38,14 @@ export default async function CustomersPage({ searchParams }: PageProps) {
               Manage customer records used in approval and billing.
             </p>
           </div>
-          {hasPermission(session, "CUSTOMER_CREATE") ? (
-            <Link href="/dashboard/customers/new">
-              <Button>Create customer</Button>
-            </Link>
-          ) : null}
+          <div className="flex items-center gap-2">
+            <ExportCsvButton endpoint="/api/customers/export" />
+            {hasPermission(session, "CUSTOMER_CREATE") ? (
+              <Link href="/dashboard/customers/new">
+                <Button>Create customer</Button>
+              </Link>
+            ) : null}
+          </div>
         </div>
 
         <div className="mt-6">
@@ -80,23 +86,33 @@ export default async function CustomersPage({ searchParams }: PageProps) {
                     <td className="px-4 py-4">{customer.city}</td>
                     <td className="px-4 py-4">{customer.status}</td>
                     <td className="px-4 py-4">
-                      {hasPermission(session, "CUSTOMER_EDIT") ? (
+                      <div className="flex items-center gap-3">
                         <Link
-                          href={`/dashboard/customers/${customer.id}/edit`}
+                          href={`/dashboard/customers/${customer.id}/statement`}
                           className="text-sm underline underline-offset-4"
                         >
-                          Edit
+                          Statement
                         </Link>
-                      ) : (
-                        <span className="text-muted-foreground">No actions</span>
-                      )}
+                        {hasPermission(session, "CUSTOMER_EDIT") ? (
+                          <Link
+                            href={`/dashboard/customers/${customer.id}/edit`}
+                            className="text-sm underline underline-offset-4"
+                          >
+                            Edit
+                          </Link>
+                        ) : null}
+                      </div>
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td className="px-4 py-8 text-muted-foreground" colSpan={7}>
-                    No customers found.
+                  <td colSpan={7}>
+                    <EmptyState
+                      icon={Users}
+                      title="No customers found"
+                      description="Add a customer to start invoicing and taking approvals."
+                    />
                   </td>
                 </tr>
               )}

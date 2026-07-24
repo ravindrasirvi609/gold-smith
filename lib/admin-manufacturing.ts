@@ -115,6 +115,80 @@ export async function getIssueOptions() {
   ]).toArray();
 }
 
+/**
+ * Reconciliation view for one karigar: every issue, every receipt, and
+ * cumulative labour charge totals.
+ */
+export async function getKarigarReconciliation(karigarId: string) {
+  const db = await getDb();
+  const _id = oid(karigarId);
+  const karigar = await db.collection("karigars").findOne({ _id });
+  if (!karigar) return null;
+
+  const [issues, receipts] = await Promise.all([
+    db
+      .collection("karigarIssues")
+      .find({ karigarId: _id })
+      .sort({ createdAt: 1 })
+      .toArray(),
+    db
+      .collection("karigarReceipts")
+      .find({ karigarId: _id })
+      .sort({ createdAt: 1 })
+      .toArray(),
+  ]);
+
+  const issueRows = issues.map((iss) => ({
+    id: String(iss._id),
+    issueNo: String(iss.issueNo ?? ""),
+    issueDate: String(iss.issueDate ?? ""),
+    status: String(iss.status ?? ""),
+    goldCount: Array.isArray(iss.gold) ? iss.gold.length : 0,
+    diamondCount: Array.isArray(iss.diamonds) ? iss.diamonds.length : 0,
+  }));
+
+  const receiptRows = receipts.map((r) => ({
+    id: String(r._id),
+    receiptNo: String(r.receiptNo ?? ""),
+    receiveDate: String(r.receiveDate ?? ""),
+    status: String(r.status ?? ""),
+    labourCharge: String(r.labourCharge ?? "0"),
+    jewelleryCount: Array.isArray(r.jewellery) ? r.jewellery.length : 0,
+  }));
+
+  const parseAmount = (v: unknown) => {
+    const nn = Number(v);
+    return Number.isFinite(nn) ? nn : 0;
+  };
+
+  const totalLabour = receipts.reduce(
+    (sum, r) =>
+      r.status === "COMPLETED" ? sum + parseAmount(r.labourCharge) : sum,
+    0
+  );
+  const openIssues = issues.filter(
+    (i) => i.status === "ISSUED" || i.status === "PARTIALLY_RECEIVED"
+  ).length;
+  const pendingReceipts = receipts.filter((r) => r.status === "PENDING").length;
+
+  return {
+    karigar: {
+      id: String(karigar._id),
+      code: String(karigar.karigarCode ?? ""),
+      name: String(karigar.name ?? ""),
+      mobile: String(karigar.mobile ?? ""),
+      specialization: String(karigar.specialization ?? ""),
+    },
+    issues: issueRows,
+    receipts: receiptRows,
+    totals: {
+      totalLabour: totalLabour.toFixed(2),
+      openIssues,
+      pendingReceipts,
+    },
+  };
+}
+
 export type IssueListItem = {
   id: string;
   issueNo: string;

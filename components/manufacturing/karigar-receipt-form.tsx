@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -79,10 +80,13 @@ export function KarigarReceiptForm({
       });
       const data = await response.json().catch(() => null);
       if (!response.ok) throw new Error(data?.message || "Could not save receipt.");
+      toast.success(mode === "create" ? "Karigar receipt created." : "Karigar receipt updated.");
       router.push("/dashboard/manufacturing/receipts");
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong.");
+      const msg = err instanceof Error ? err.message : "Something went wrong.";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }

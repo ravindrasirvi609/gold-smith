@@ -7,6 +7,8 @@ import { EntityAvatar } from "@/components/ui/entity-avatar";
 import { ListToolbar } from "@/components/ui/list-toolbar";
 import { PaginationBar } from "@/components/ui/pagination-bar";
 import { parseListQuery } from "@/lib/list-query";
+import { EmptyState } from "@/components/ui/empty-state";
+import { UserCog } from "lucide-react";
 
 type PageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -100,8 +102,12 @@ export default async function UsersPage({ searchParams }: PageProps) {
                 ))
               ) : (
                 <tr>
-                  <td className="px-4 py-8 text-muted-foreground" colSpan={6}>
-                    No users found.
+                  <td colSpan={6}>
+                    <EmptyState
+                      icon={UserCog}
+                      title="No users found"
+                      description="Invite team members and assign them roles."
+                    />
                   </td>
                 </tr>
               )}

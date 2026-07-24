@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { getSession, hasPermission } from "@/lib/auth";
 import { getInvoiceById } from "@/lib/admin-sales";
 import { Button } from "@/components/ui/button";
+import { PageBreadcrumbs } from "@/components/ui/page-breadcrumbs";
 
 type PageProps = { params: Promise<{ id: string }> };
 
@@ -21,14 +22,28 @@ export default async function InvoiceDetailPage({ params }: PageProps) {
   return (
     <main className="min-h-screen bg-background text-foreground">
       <div className="mx-auto flex min-h-screen w-full max-w-4xl flex-col px-6 py-10">
+        <PageBreadcrumbs
+          items={[
+            { label: "Dashboard", href: "/dashboard" },
+            { label: "Sales", href: "/dashboard/sales" },
+            { label: "Invoices", href: "/dashboard/invoices" },
+            { label: "Details" },
+          ]}
+          className="mb-4"
+        />
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm text-muted-foreground">Sales / Invoice</p>
             <h1 className="text-3xl font-semibold">Invoice details</h1>
           </div>
-          <Link href="/dashboard/invoices">
-            <Button variant="outline">Back to invoices</Button>
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link href={`/dashboard/invoices/${invoice.id}/print`}>
+              <Button variant="outline">Print / PDF</Button>
+            </Link>
+            <Link href="/dashboard/invoices">
+              <Button variant="outline">Back to invoices</Button>
+            </Link>
+          </div>
         </div>
 
         <div className="mt-8 grid gap-4 sm:grid-cols-2">

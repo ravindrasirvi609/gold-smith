@@ -128,3 +128,46 @@ export function hasPermission(
 ) {
   return Boolean(session?.permissions.includes(permission));
 }
+
+/**
+ * Return every live session for a user. Uses the `sessions` collection —
+ * caller supplies the userId string exactly as we store it (String(_id)).
+ */
+export async function listUserSessions(userId: string) {
+  const db = await getDb();
+  const now = new Date();
+  const rows = await db
+    .collection("sessions")
+    .find({ userId, expiresAt: { $gt: now } })
+    .sort({ createdAt: -1 })
+    .toArray();
+  return rows.map((row) => ({
+    id: String(row._id),
+    createdAt: row.createdAt
+      ? new Date(row.createdAt as string).toISOString()
+      : "",
+    expiresAt: row.expiresAt
+      ? new Date(row.expiresAt as string).toISOString()
+      : "",
+  }));
+}
+
+/**
+ * Revoke a specific session by its Mongo _id. The next request carrying
+ * that JWT will fail the `sessions` lookup and be treated as logged-out.
+ */
+export async function revokeSession(sessionId: string) {
+  const { ObjectId } = await import("mongodb");
+  if (!ObjectId.isValid(sessionId)) throw new Error("Invalid session id.");
+  const db = await getDb();
+  await db.collection("sessions").deleteOne({ _id: new ObjectId(sessionId) });
+}
+
+/**
+ * Invalidate every live session for a user. Used for admin force-logout.
+ */
+export async function revokeAllSessionsForUser(userId: string) {
+  const db = await getDb();
+  const result = await db.collection("sessions").deleteMany({ userId });
+  return { count: result.deletedCount };
+}

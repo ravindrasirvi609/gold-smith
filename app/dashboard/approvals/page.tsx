@@ -7,6 +7,8 @@ import { ListToolbar } from "@/components/ui/list-toolbar";
 import { PaginationBar } from "@/components/ui/pagination-bar";
 import { RowActionButton } from "@/components/ui/row-action-button";
 import { parseListQuery } from "@/lib/list-query";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Handshake } from "lucide-react";
 
 type PageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -94,9 +96,10 @@ export default async function ApprovalsPage({ searchParams }: PageProps) {
                             <RowActionButton
                               url={`/api/approvals/${approval.id}/cancel`}
                               method="POST"
-                              confirm={`Cancel approval ${approval.approvalNo}? All products will return to stock.`}
+                              tone="warning"
+                              confirmTitle={`Cancel approval ${approval.approvalNo}?`}
+                              confirmDescription="All products still on this approval will return to stock. The approval record is kept for audit."
                               successMessage="Approval cancelled."
-                              className="text-amber-700 dark:text-amber-400"
                             >
                               Cancel
                             </RowActionButton>
@@ -105,9 +108,10 @@ export default async function ApprovalsPage({ searchParams }: PageProps) {
                             <RowActionButton
                               url={`/api/approvals/${approval.id}`}
                               method="DELETE"
-                              confirm={`Delete approval ${approval.approvalNo}?`}
+                              tone="danger"
+                              confirmTitle={`Delete approval ${approval.approvalNo}?`}
+                              confirmDescription="This permanently removes the approval. Only drafts and cancelled approvals can be deleted."
                               successMessage="Approval deleted."
-                              className="text-destructive"
                             >
                               Delete
                             </RowActionButton>
@@ -119,11 +123,12 @@ export default async function ApprovalsPage({ searchParams }: PageProps) {
                 ))
               ) : (
                 <tr>
-                  <td
-                    className="px-4 py-8 text-muted-foreground"
-                    colSpan={hasActions ? 7 : 6}
-                  >
-                    No approvals found.
+                  <td colSpan={hasActions ? 7 : 6}>
+                    <EmptyState
+                      icon={Handshake}
+                      title="No approvals found"
+                      description="Create an approval when a customer takes jewellery on trial."
+                    />
                   </td>
                 </tr>
               )}

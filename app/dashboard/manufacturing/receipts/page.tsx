@@ -6,6 +6,8 @@ import { getReceipts } from "@/lib/admin-manufacturing";
 import { ListToolbar } from "@/components/ui/list-toolbar";
 import { PaginationBar } from "@/components/ui/pagination-bar";
 import { parseListQuery } from "@/lib/list-query";
+import { EmptyState } from "@/components/ui/empty-state";
+import { PackageCheck } from "lucide-react";
 
 type PageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -81,11 +83,12 @@ export default async function ReceiptsPage({ searchParams }: PageProps) {
                 ))
               ) : (
                 <tr>
-                  <td
-                    className="px-4 py-8 text-muted-foreground"
-                    colSpan={canEdit ? 6 : 5}
-                  >
-                    No receipts found.
+                  <td colSpan={canEdit ? 6 : 5}>
+                    <EmptyState
+                      icon={PackageCheck}
+                      title="No karigar receipts yet"
+                      description="Receive finished jewellery from a karigar."
+                    />
                   </td>
                 </tr>
               )}

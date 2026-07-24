@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -67,15 +68,18 @@ export function PurchaseForm({ mode, actionUrl, purchaseType, vendors, initialVa
       const response = await fetch(actionUrl, { method: mode === "create" ? "POST" : "PATCH", body: form });
       const data = await response.json().catch(() => null);
       if (!response.ok) throw new Error(data?.message || "Could not save purchase.");
+      toast.success(mode === "create" ? "Purchase created." : "Purchase updated.");
       router.push(purchaseType === "gold" ? "/dashboard/gold-purchases" : "/dashboard/diamond-purchases");
       router.refresh();
     } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : "Something went wrong.");
+      const msg = submitError instanceof Error ? submitError.message : "Something went wrong.";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
   }
-  async function onDelete() { if (!window.confirm("Delete this purchase? This cannot be undone.")) return; setLoading(true); setError(null); try { const response = await fetch(actionUrl, { method: "DELETE" }); const data = await response.json().catch(() => null); if (!response.ok) throw new Error(data?.message || "Could not delete purchase."); router.push(purchaseType === "gold" ? "/dashboard/gold-purchases" : "/dashboard/diamond-purchases"); router.refresh(); } catch (deleteError) { setError(deleteError instanceof Error ? deleteError.message : "Something went wrong."); } finally { setLoading(false); } }
+  async function onDelete() { if (!window.confirm("Delete this purchase? This cannot be undone.")) return; setLoading(true); setError(null); try { const response = await fetch(actionUrl, { method: "DELETE" }); const data = await response.json().catch(() => null); if (!response.ok) throw new Error(data?.message || "Could not delete purchase."); toast.success("Purchase deleted."); router.push(purchaseType === "gold" ? "/dashboard/gold-purchases" : "/dashboard/diamond-purchases"); router.refresh(); } catch (deleteError) { const msg = deleteError instanceof Error ? deleteError.message : "Something went wrong."; setError(msg); toast.error(msg); } finally { setLoading(false); } }
   function updateItem(index: number, key: string, value: string) {
     setItems((current) =>
       current.map((item, i) =>

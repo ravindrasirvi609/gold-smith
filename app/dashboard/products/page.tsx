@@ -6,6 +6,8 @@ import { ListToolbar } from "@/components/ui/list-toolbar";
 import { PaginationBar } from "@/components/ui/pagination-bar";
 import { RowActionButton } from "@/components/ui/row-action-button";
 import { parseListQuery } from "@/lib/list-query";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Gem } from "lucide-react";
 
 type PageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -71,7 +73,14 @@ export default async function ProductsPage({ searchParams }: PageProps) {
                         <span className="text-muted-foreground">—</span>
                       )}
                     </td>
-                    <td className="px-4 py-4 font-mono text-xs">{product.jewelCode}</td>
+                    <td className="px-4 py-4 font-mono text-xs">
+                      <a
+                        href={`/dashboard/products/${product.id}`}
+                        className="underline underline-offset-4"
+                      >
+                        {product.jewelCode}
+                      </a>
+                    </td>
                     <td className="px-4 py-4">{product.productName}</td>
                     <td className="px-4 py-4">{product.category}</td>
                     <td className="px-4 py-4">{product.netWeight}</td>
@@ -82,9 +91,10 @@ export default async function ProductsPage({ searchParams }: PageProps) {
                           <RowActionButton
                             url={`/api/products/${product.id}`}
                             method="DELETE"
-                            confirm={`Delete product ${product.jewelCode}? This cannot be undone.`}
+                            tone="danger"
+                            confirmTitle={`Delete product ${product.jewelCode}?`}
+                            confirmDescription="This will permanently remove the product record, its history, and any attached image. This cannot be undone."
                             successMessage="Product deleted."
-                            className="text-destructive"
                           >
                             Delete
                           </RowActionButton>
@@ -97,11 +107,12 @@ export default async function ProductsPage({ searchParams }: PageProps) {
                 ))
               ) : (
                 <tr>
-                  <td
-                    className="px-4 py-8 text-muted-foreground"
-                    colSpan={canDelete ? 7 : 6}
-                  >
-                    No products found.
+                  <td colSpan={canDelete ? 7 : 6}>
+                    <EmptyState
+                      icon={Gem}
+                      title="No products found"
+                      description="Complete a karigar receipt to auto-create products."
+                    />
                   </td>
                 </tr>
               )}

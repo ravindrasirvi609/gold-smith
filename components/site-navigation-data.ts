@@ -4,4 +4,5 @@ export const siteNavigation = [
   { href: "/dashboard/karigars", label: "Karigars" },
   { href: "/dashboard/inventory", label: "Inventory" },
   { href: "/dashboard/sales", label: "Sales" },
+  { href: "/dashboard/reports", label: "Reports" },
 ] as const;

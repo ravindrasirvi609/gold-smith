@@ -300,6 +300,149 @@ export async function getInvoiceById(id: string) {
   };
 }
 
+/**
+ * Fully-hydrated invoice for the printable/PDF page. Includes the
+ * customer contact block, business settings (from the `settings`
+ * collection), invoice number, and totals so the page needs no further
+ * queries.
+ */
+/**
+ * Full statement for one customer: their profile, every invoice, every
+ * payment, running totals, and a closing balance. Used by the customer
+ * statement page.
+ */
+export async function getCustomerStatement(customerId: string) {
+  const db = await getDb();
+  const _id = oid(customerId);
+  const customer = await db.collection("customers").findOne({ _id });
+  if (!customer) return null;
+
+  const [invoices, payments] = await Promise.all([
+    db
+      .collection("invoices")
+      .find({ customerId: _id })
+      .sort({ createdAt: 1 })
+      .toArray(),
+    db
+      .collection("payments")
+      .find({ customerId: _id })
+      .sort({ createdAt: 1 })
+      .toArray(),
+  ]);
+
+  const invoiceRows = invoices.map((inv) => ({
+    id: s(inv._id),
+    invoiceNo: s(inv.invoiceNo ?? ""),
+    date: s(inv.invoiceDate ?? ""),
+    grandTotal: s(inv.grandTotal ?? "0"),
+    status: s(inv.paymentStatus ?? ""),
+  }));
+  const paymentRows = payments.map((p) => ({
+    id: s(p._id),
+    paymentNo: s(p.paymentNo ?? ""),
+    invoiceNo: "",
+    date: s(p.paymentDate ?? ""),
+    amount: s(p.amount ?? "0"),
+    type: s(p.paymentType ?? ""),
+    status: s(p.status ?? ""),
+  }));
+
+  const totalBilled = invoices.reduce(
+    (sum, inv) =>
+      inv.paymentStatus === "CANCELLED"
+        ? sum
+        : sum + n(s(inv.grandTotal ?? "0")),
+    0
+  );
+  const totalPaid = payments.reduce(
+    (sum, p) =>
+      p.status === "REFUNDED" || p.status === "CANCELLED"
+        ? sum
+        : sum + n(s(p.amount ?? "0")),
+    0
+  );
+
+  return {
+    customer: {
+      id: s(customer._id),
+      code: s(customer.customerCode ?? ""),
+      name: `${s(customer.firstName ?? "")} ${s(customer.lastName ?? "")}`.trim(),
+      mobile: s(customer.mobile ?? ""),
+      email: s(customer.email ?? ""),
+      city: s(customer.city ?? ""),
+    },
+    invoices: invoiceRows,
+    payments: paymentRows,
+    totals: {
+      billed: totalBilled.toFixed(2),
+      paid: totalPaid.toFixed(2),
+      balance: (totalBilled - totalPaid).toFixed(2),
+    },
+  };
+}
+
+export async function getInvoicePrintData(id: string) {
+  const db = await getDb();
+  const invoice = await db.collection("invoices").findOne({ _id: oid(id) });
+  if (!invoice) return null;
+
+  const [customer, settings, payments] = await Promise.all([
+    invoice.customerId
+      ? db.collection("customers").findOne({ _id: invoice.customerId as ObjectId })
+      : null,
+    db.collection("settings").find({}).toArray(),
+    db.collection("payments").find({ invoiceId: oid(id) }).sort({ createdAt: 1 }).toArray(),
+  ]);
+
+  const settingMap = new Map<string, string>(
+    settings.map((doc) => [String(doc.key ?? ""), s(doc.value ?? "")])
+  );
+
+  const subtotal = Array.isArray(invoice.products)
+    ? (invoice.products as Array<{ total?: string }>).reduce(
+        (sum, row) => sum + n(String(row.total ?? "0")),
+        0
+      )
+    : 0;
+  const paid = payments
+    .filter((p) => p.status !== "REFUNDED" && p.status !== "CANCELLED")
+    .reduce((sum, p) => sum + n(s(p.amount ?? "0")), 0);
+
+  return {
+    id: s(invoice._id),
+    invoiceNo: s(invoice.invoiceNo ?? ""),
+    invoiceDate: s(invoice.invoiceDate ?? ""),
+    saleType: s(invoice.saleType ?? "Direct"),
+    paymentStatus: s(invoice.paymentStatus ?? "DRAFT") as InvoiceStatus,
+    remarks: s(invoice.remarks ?? ""),
+    products: Array.isArray(invoice.products) ? invoice.products : [],
+    subtotal: subtotal.toFixed(2),
+    grandTotal: s(invoice.grandTotal ?? subtotal.toFixed(2)),
+    amountPaid: paid.toFixed(2),
+    balanceDue: Math.max(0, n(s(invoice.grandTotal ?? "0")) - paid).toFixed(2),
+    customer: customer
+      ? {
+          code: s(customer.customerCode ?? ""),
+          name: `${s(customer.firstName ?? "")} ${s(customer.lastName ?? "")}`.trim(),
+          mobile: s(customer.mobile ?? ""),
+          email: s(customer.email ?? ""),
+          gst: s(customer.gstNumber ?? ""),
+          address: [customer.address, customer.city, customer.state, customer.pincode]
+            .map((v) => s(v))
+            .filter(Boolean)
+            .join(", "),
+        }
+      : null,
+    business: {
+      name: settingMap.get("business_name") || "Gold Smith Jewellery",
+      address: settingMap.get("business_address") || "",
+      gst: settingMap.get("business_gst") || "",
+      phone: settingMap.get("business_phone") || "",
+      email: settingMap.get("business_email") || "",
+    },
+  };
+}
+
 export async function createInvoice(input: {
   customerId: string;
   approvalId?: string;

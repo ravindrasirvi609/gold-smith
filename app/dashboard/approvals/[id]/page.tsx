@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { getSession, hasPermission } from "@/lib/auth";
 import { getApprovalById } from "@/lib/admin-sales";
 import { Button } from "@/components/ui/button";
+import { PageBreadcrumbs } from "@/components/ui/page-breadcrumbs";
 
 type PageProps = { params: Promise<{ id: string }> };
 
@@ -21,6 +22,15 @@ export default async function ApprovalDetailPage({ params }: PageProps) {
   return (
     <main className="min-h-screen bg-background text-foreground">
       <div className="mx-auto flex min-h-screen w-full max-w-4xl flex-col px-6 py-10">
+        <PageBreadcrumbs
+          items={[
+            { label: "Dashboard", href: "/dashboard" },
+            { label: "Sales", href: "/dashboard/sales" },
+            { label: "Approvals", href: "/dashboard/approvals" },
+            { label: "Details" },
+          ]}
+          className="mb-4"
+        />
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm text-muted-foreground">Sales / Approval</p>

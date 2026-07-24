@@ -5,6 +5,9 @@ import { ListToolbar } from "@/components/ui/list-toolbar";
 import { PaginationBar } from "@/components/ui/pagination-bar";
 import { RowActionButton } from "@/components/ui/row-action-button";
 import { parseListQuery } from "@/lib/list-query";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ExportCsvButton } from "@/components/ui/export-csv-button";
+import { Wallet } from "lucide-react";
 
 type PageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -30,7 +33,10 @@ export default async function PaymentsPage({ searchParams }: PageProps) {
   return (
     <main className="min-h-screen bg-background text-foreground">
       <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-6 py-10">
-        <h1 className="text-3xl font-semibold">Payments</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-semibold">Payments</h1>
+          <ExportCsvButton endpoint="/api/payments/export" />
+        </div>
 
         <div className="mt-6">
           <ListToolbar
@@ -86,9 +92,10 @@ export default async function PaymentsPage({ searchParams }: PageProps) {
                             <RowActionButton
                               url={`/api/payments/${payment.id}/refund`}
                               method="POST"
-                              confirm={`Refund payment ${payment.paymentNo}?`}
+                              tone="warning"
+                              confirmTitle={`Refund payment ${payment.paymentNo}?`}
+                              confirmDescription="The payment will be marked as refunded. If the linked invoice was fully paid, it will re-open to partially paid."
                               successMessage="Payment refunded."
-                              className="text-amber-700 dark:text-amber-400"
                             >
                               Refund
                             </RowActionButton>
@@ -97,9 +104,10 @@ export default async function PaymentsPage({ searchParams }: PageProps) {
                             <RowActionButton
                               url={`/api/payments/${payment.id}`}
                               method="DELETE"
-                              confirm={`Delete pending payment ${payment.paymentNo}?`}
+                              tone="danger"
+                              confirmTitle={`Delete pending payment ${payment.paymentNo}?`}
+                              confirmDescription="Only pending payments can be deleted. For applied payments, use refund instead."
                               successMessage="Payment deleted."
-                              className="text-destructive"
                             >
                               Delete
                             </RowActionButton>
@@ -111,11 +119,12 @@ export default async function PaymentsPage({ searchParams }: PageProps) {
                 ))
               ) : (
                 <tr>
-                  <td
-                    className="px-4 py-8 text-muted-foreground"
-                    colSpan={hasActions ? 8 : 7}
-                  >
-                    No payments found.
+                  <td colSpan={hasActions ? 8 : 7}>
+                    <EmptyState
+                      icon={Wallet}
+                      title="No payments yet"
+                      description="Record a payment against any invoice."
+                    />
                   </td>
                 </tr>
               )}

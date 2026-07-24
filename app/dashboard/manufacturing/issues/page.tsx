@@ -6,6 +6,8 @@ import { getIssues } from "@/lib/admin-manufacturing";
 import { ListToolbar } from "@/components/ui/list-toolbar";
 import { PaginationBar } from "@/components/ui/pagination-bar";
 import { parseListQuery } from "@/lib/list-query";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Wrench } from "lucide-react";
 
 type PageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -84,8 +86,12 @@ export default async function IssuesPage({ searchParams }: PageProps) {
                 ))
               ) : (
                 <tr>
-                  <td className="px-4 py-8 text-muted-foreground" colSpan={7}>
-                    No issues found.
+                  <td colSpan={7}>
+                    <EmptyState
+                      icon={Wrench}
+                      title="No karigar issues yet"
+                      description="Issue gold or diamonds to a karigar to begin manufacturing."
+                    />
                   </td>
                 </tr>
               )}

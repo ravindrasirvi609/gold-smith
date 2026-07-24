@@ -6,6 +6,9 @@ import { getVendors } from "@/lib/admin-vendors";
 import { EntityAvatar } from "@/components/ui/entity-avatar";
 import { ListToolbar } from "@/components/ui/list-toolbar";
 import { PaginationBar } from "@/components/ui/pagination-bar";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ExportCsvButton } from "@/components/ui/export-csv-button";
+import { Building2 } from "lucide-react";
 import { parseListQuery } from "@/lib/list-query";
 
 type PageProps = {
@@ -36,11 +39,14 @@ export default async function VendorsPage({ searchParams }: PageProps) {
               Manage supplier records used in purchases.
             </p>
           </div>
-          {hasPermission(session, "VENDOR_CREATE") ? (
-            <Link href="/dashboard/vendors/new">
-              <Button>Create vendor</Button>
-            </Link>
-          ) : null}
+          <div className="flex items-center gap-2">
+            <ExportCsvButton endpoint="/api/vendors/export" />
+            {hasPermission(session, "VENDOR_CREATE") ? (
+              <Link href="/dashboard/vendors/new">
+                <Button>Create vendor</Button>
+              </Link>
+            ) : null}
+          </div>
         </div>
 
         <div className="mt-6">
@@ -98,8 +104,12 @@ export default async function VendorsPage({ searchParams }: PageProps) {
                 ))
               ) : (
                 <tr>
-                  <td className="px-4 py-8 text-muted-foreground" colSpan={9}>
-                    No vendors found.
+                  <td colSpan={9}>
+                    <EmptyState
+                      icon={Building2}
+                      title="No vendors found"
+                      description="Add a vendor to start tracking purchases and KYC."
+                    />
                   </td>
                 </tr>
               )}

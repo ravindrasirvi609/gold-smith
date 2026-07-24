@@ -6,6 +6,8 @@ import { getGoldPurchases, getGoldInventorySummary } from "@/lib/admin-inventory
 import { ListToolbar } from "@/components/ui/list-toolbar";
 import { PaginationBar } from "@/components/ui/pagination-bar";
 import { parseListQuery } from "@/lib/list-query";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Coins } from "lucide-react";
 
 type PageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -126,8 +128,12 @@ export default async function GoldPurchasesPage({ searchParams }: PageProps) {
                 ))
               ) : (
                 <tr>
-                  <td className="px-4 py-8 text-muted-foreground" colSpan={8}>
-                    No gold purchases found.
+                  <td colSpan={8}>
+                    <EmptyState
+                      icon={Coins}
+                      title="No gold purchases yet"
+                      description="Create a purchase to start the gold ledger."
+                    />
                   </td>
                 </tr>
               )}

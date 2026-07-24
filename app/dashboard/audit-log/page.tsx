@@ -4,6 +4,8 @@ import { getAuditLogs } from "@/lib/admin-sales";
 import { ListToolbar } from "@/components/ui/list-toolbar";
 import { PaginationBar } from "@/components/ui/pagination-bar";
 import { parseListQuery } from "@/lib/list-query";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Shield } from "lucide-react";
 
 type PageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -79,8 +81,12 @@ export default async function AuditLogPage({ searchParams }: PageProps) {
                 ))
               ) : (
                 <tr>
-                  <td className="px-4 py-8 text-muted-foreground" colSpan={5}>
-                    No audit logs found.
+                  <td colSpan={5}>
+                    <EmptyState
+                      icon={Shield}
+                      title="No audit entries"
+                      description="Actions across the ERP appear here as they occur."
+                    />
                   </td>
                 </tr>
               )}

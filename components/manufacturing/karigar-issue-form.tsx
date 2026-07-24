@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -56,10 +57,13 @@ export function KarigarIssueForm({ mode, actionUrl, karigars, initialValues, can
       const response = await fetch(actionUrl, { method: mode === "create" ? "POST" : "PATCH", body: form });
       const data = await response.json().catch(() => null);
       if (!response.ok) throw new Error(data?.message || "Could not save issue.");
+      toast.success(mode === "create" ? "Karigar issue created." : "Karigar issue updated.");
       router.push("/dashboard/manufacturing/issues");
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong.");
+      const msg = err instanceof Error ? err.message : "Something went wrong.";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
