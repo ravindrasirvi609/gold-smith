@@ -2,6 +2,14 @@ import { ObjectId } from "mongodb";
 import { getDb } from "@/lib/mongodb";
 import { formatCode, nextSequence } from "@/lib/sequences";
 import { deleteR2Objects } from "@/lib/r2-cleanup";
+import {
+  andFilters,
+  buildSort,
+  paginate,
+  textSearchFilter,
+  type ListQuery,
+  type PaginatedResult,
+} from "@/lib/list-query";
 
 export type KarigarListItem = {
   id: string;
@@ -55,23 +63,79 @@ async function nextKarigarCode() {
   return formatCode("K", await nextSequence("karigar"));
 }
 
-export async function getKarigars() {
+const KARIGAR_SEARCH_FIELDS = [
+  "karigarCode",
+  "name",
+  "fatherName",
+  "mobile",
+  "specialization",
+];
+const KARIGAR_SORT_FIELDS = [
+  "createdAt",
+  "name",
+  "karigarCode",
+  "status",
+] as const;
+
+function mapKarigar(karigar: Record<string, unknown>): KarigarListItem {
+  return {
+    id: String(karigar._id),
+    karigarCode: String(karigar.karigarCode ?? ""),
+    name: String(karigar.name ?? ""),
+    specialization: String(karigar.specialization ?? ""),
+    labourRate: String(karigar.labourRate ?? ""),
+    pendingIssue: String(karigar.pendingIssue ?? "0"),
+    pendingReceipt: String(karigar.pendingReceipt ?? "0"),
+    status: (karigar.status ?? "ACTIVE") as KarigarListItem["status"],
+    photoUrl: String(karigar.photoUrl ?? ""),
+  } satisfies KarigarListItem;
+}
+
+/**
+ * Return a lightweight list of active karigars for dropdowns / pickers.
+ * Never paginated — a business is expected to have tens, not thousands,
+ * of karigars. Callers that need pagination should use `getKarigars()`.
+ */
+export async function getKarigarOptions(): Promise<Array<{ id: string; name: string; karigarCode: string }>> {
   const db = await getDb();
-  const karigars = await db.collection("karigars").find({}).sort({ createdAt: -1 }).toArray();
-  return karigars.map(
-    (karigar) =>
-      ({
-        id: String(karigar._id),
-        karigarCode: String(karigar.karigarCode ?? ""),
-        name: String(karigar.name ?? ""),
-        specialization: String(karigar.specialization ?? ""),
-        labourRate: String(karigar.labourRate ?? ""),
-        pendingIssue: String(karigar.pendingIssue ?? "0"),
-        pendingReceipt: String(karigar.pendingReceipt ?? "0"),
-        status: (karigar.status ?? "ACTIVE") as KarigarListItem["status"],
-        photoUrl: String(karigar.photoUrl ?? ""),
-      }) satisfies KarigarListItem
+  const rows = await db
+    .collection("karigars")
+    .find({ status: "ACTIVE" }, { projection: { name: 1, karigarCode: 1 } })
+    .sort({ name: 1 })
+    .toArray();
+  return rows.map((r) => ({
+    id: String(r._id),
+    name: String(r.name ?? ""),
+    karigarCode: String(r.karigarCode ?? ""),
+  }));
+}
+
+export async function getKarigars(
+  query?: ListQuery
+): Promise<PaginatedResult<KarigarListItem>> {
+  const db = await getDb();
+  const q: ListQuery = query ?? {
+    page: 1,
+    pageSize: 20,
+    skip: 0,
+    limit: 20,
+    search: "",
+    sortField: "createdAt",
+    sortDir: -1,
+    status: "",
+    from: "",
+    to: "",
+  };
+  const filter = andFilters(
+    textSearchFilter(q.search, KARIGAR_SEARCH_FIELDS),
+    q.status ? { status: q.status } : undefined
   );
+  const sort = buildSort(q.sortField, q.sortDir, KARIGAR_SORT_FIELDS, "createdAt");
+  const [total, docs] = await Promise.all([
+    db.collection("karigars").countDocuments(filter),
+    db.collection("karigars").find(filter).sort(sort).skip(q.skip).limit(q.limit).toArray(),
+  ]);
+  return paginate(docs.map(mapKarigar), total, q);
 }
 
 export async function getKarigarById(id: string) {

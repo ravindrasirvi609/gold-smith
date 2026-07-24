@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import { getDb } from "@/lib/mongodb";
 
 function s(value: unknown) {
@@ -79,7 +80,23 @@ async function getGoldMetrics() {
   };
 }
 
-export async function getDashboardData(): Promise<DashboardPayload> {
+/**
+ * Cached wrapper. The dashboard's 16 parallel queries are expensive; we
+ * cache the aggregated payload for 60 seconds. That's short enough that
+ * users see near-real-time data (invoices land within a minute of being
+ * created) but long enough that dashboard hits from multiple team members
+ * collapse into a single DB round-trip.
+ *
+ * Callers that need fresh data can invoke `revalidateTag("dashboard")` from
+ * their mutating route handler.
+ */
+export const getDashboardData = unstable_cache(
+  () => _getDashboardDataUncached(),
+  ["dashboard-payload"],
+  { revalidate: 60, tags: ["dashboard"] }
+);
+
+async function _getDashboardDataUncached(): Promise<DashboardPayload> {
   const db = await getDb();
   const now = new Date();
   const todayStart = startOfDay(now);

@@ -2,6 +2,14 @@ import { ObjectId } from "mongodb";
 import { getDb } from "@/lib/mongodb";
 import { formatCode, nextSequence } from "@/lib/sequences";
 import { deleteR2Objects } from "@/lib/r2-cleanup";
+import {
+  andFilters,
+  buildSort,
+  paginate,
+  textSearchFilter,
+  type ListQuery,
+  type PaginatedResult,
+} from "@/lib/list-query";
 
 export type CustomerListItem = {
   id: string;
@@ -51,22 +59,60 @@ async function nextCustomerCode() {
   return formatCode("C", await nextSequence("customer"));
 }
 
-export async function getCustomers() {
+const CUSTOMER_SEARCH_FIELDS = [
+  "customerCode",
+  "firstName",
+  "lastName",
+  "mobile",
+  "email",
+  "city",
+];
+const CUSTOMER_SORT_FIELDS = [
+  "createdAt",
+  "firstName",
+  "customerCode",
+  "status",
+] as const;
+
+function mapCustomer(customer: Record<string, unknown>): CustomerListItem {
+  return {
+    id: String(customer._id),
+    customerCode: String(customer.customerCode ?? ""),
+    firstName: String(customer.firstName ?? ""),
+    lastName: String(customer.lastName ?? ""),
+    mobile: String(customer.mobile ?? ""),
+    city: String(customer.city ?? ""),
+    status: (customer.status ?? "ACTIVE") as CustomerListItem["status"],
+    photoUrl: String(customer.photoUrl ?? ""),
+  } satisfies CustomerListItem;
+}
+
+export async function getCustomers(
+  query?: ListQuery
+): Promise<PaginatedResult<CustomerListItem>> {
   const db = await getDb();
-  const customers = await db.collection("customers").find({}).sort({ createdAt: -1 }).toArray();
-  return customers.map(
-    (customer) =>
-      ({
-        id: String(customer._id),
-        customerCode: String(customer.customerCode ?? ""),
-        firstName: String(customer.firstName ?? ""),
-        lastName: String(customer.lastName ?? ""),
-        mobile: String(customer.mobile ?? ""),
-        city: String(customer.city ?? ""),
-        status: (customer.status ?? "ACTIVE") as CustomerListItem["status"],
-        photoUrl: String(customer.photoUrl ?? ""),
-      }) satisfies CustomerListItem
+  const q: ListQuery = query ?? {
+    page: 1,
+    pageSize: 20,
+    skip: 0,
+    limit: 20,
+    search: "",
+    sortField: "createdAt",
+    sortDir: -1,
+    status: "",
+    from: "",
+    to: "",
+  };
+  const filter = andFilters(
+    textSearchFilter(q.search, CUSTOMER_SEARCH_FIELDS),
+    q.status ? { status: q.status } : undefined
   );
+  const sort = buildSort(q.sortField, q.sortDir, CUSTOMER_SORT_FIELDS, "createdAt");
+  const [total, docs] = await Promise.all([
+    db.collection("customers").countDocuments(filter),
+    db.collection("customers").find(filter).sort(sort).skip(q.skip).limit(q.limit).toArray(),
+  ]);
+  return paginate(docs.map(mapCustomer), total, q);
 }
 
 export async function getCustomerById(id: string) {

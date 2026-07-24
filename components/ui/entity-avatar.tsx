@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 type EntityAvatarProps = {
@@ -16,15 +17,33 @@ function initials(name: string) {
     .join("");
 }
 
-export function EntityAvatar({ src, name, size = 32, className }: EntityAvatarProps) {
+/**
+ * Render an entity photo (vendor logo, customer photo, karigar photo, user
+ * avatar). Falls back to a two-letter initials chip when no src is given.
+ *
+ * Uses `next/image` with `unoptimized` because our R2 public URLs are
+ * already CDN-served and don't need re-optimisation through the /_next/image
+ * pipeline. This preserves lazy loading, layout stability, and priority
+ * hints from next/image without adding an unnecessary optimisation hop.
+ */
+export function EntityAvatar({
+  src,
+  name,
+  size = 32,
+  className,
+}: EntityAvatarProps) {
   if (src) {
     return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
+      <Image
         src={src}
         alt={name}
-        style={{ width: size, height: size }}
-        className={cn("shrink-0 rounded-full object-cover bg-muted", className)}
+        width={size}
+        height={size}
+        unoptimized
+        className={cn(
+          "shrink-0 rounded-full object-cover bg-muted",
+          className
+        )}
       />
     );
   }

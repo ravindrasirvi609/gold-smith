@@ -4,15 +4,29 @@ import { getSession, hasPermission } from "@/lib/auth";
 import { getUsers } from "@/lib/admin-users";
 import { Button } from "@/components/ui/button";
 import { EntityAvatar } from "@/components/ui/entity-avatar";
+import { ListToolbar } from "@/components/ui/list-toolbar";
+import { PaginationBar } from "@/components/ui/pagination-bar";
+import { parseListQuery } from "@/lib/list-query";
 
-export default async function UsersPage() {
+type PageProps = {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+};
+
+const STATUS_OPTIONS = [
+  { label: "Active", value: "ACTIVE" },
+  { label: "Inactive", value: "INACTIVE" },
+  { label: "Blocked", value: "BLOCKED" },
+];
+
+export default async function UsersPage({ searchParams }: PageProps) {
   const session = await getSession();
 
   if (!session || !hasPermission(session, "USER_VIEW")) {
     redirect("/dashboard");
   }
 
-  const users = await getUsers();
+  const query = parseListQuery(await searchParams);
+  const result = await getUsers(query);
   const canCreate = hasPermission(session, "USER_CREATE");
 
   return (
@@ -35,7 +49,14 @@ export default async function UsersPage() {
           ) : null}
         </div>
 
-        <div className="mt-8 overflow-hidden rounded-3xl border bg-card shadow-sm">
+        <div className="mt-6">
+          <ListToolbar
+            searchPlaceholder="Search by name, email, mobile…"
+            statusOptions={STATUS_OPTIONS}
+          />
+        </div>
+
+        <div className="mt-6 overflow-hidden rounded-3xl border bg-card shadow-sm">
           <table className="w-full text-left text-sm">
             <thead className="border-b bg-muted/40 text-muted-foreground">
               <tr>
@@ -48,18 +69,19 @@ export default async function UsersPage() {
               </tr>
             </thead>
             <tbody>
-              {users.length ? (
-                users.map((user) => (
+              {result.items.length ? (
+                result.items.map((user) => (
                   <tr key={user.id} className="border-b last:border-b-0">
                     <td className="px-4 py-4">
-                      <EntityAvatar src={user.profileImage} name={[user.firstName, user.lastName].filter(Boolean).join(" ")} />
+                      <EntityAvatar
+                        src={user.profileImage}
+                        name={[user.firstName, user.lastName].filter(Boolean).join(" ")}
+                      />
                     </td>
                     <td className="px-4 py-4">
                       {user.firstName} {user.lastName}
                     </td>
-                    <td className="px-4 py-4 text-muted-foreground">
-                      {user.email}
-                    </td>
+                    <td className="px-4 py-4 text-muted-foreground">{user.email}</td>
                     <td className="px-4 py-4">{user.roleName}</td>
                     <td className="px-4 py-4">{user.status}</td>
                     <td className="px-4 py-4">
@@ -85,6 +107,12 @@ export default async function UsersPage() {
               )}
             </tbody>
           </table>
+          <PaginationBar
+            page={result.page}
+            totalPages={result.totalPages}
+            total={result.total}
+            pageSize={result.pageSize}
+          />
         </div>
       </div>
     </main>

@@ -1,5 +1,13 @@
 import { ObjectId } from "mongodb";
 import { getDb } from "@/lib/mongodb";
+import {
+  andFilters,
+  buildSort,
+  paginate,
+  textSearchFilter,
+  type ListQuery,
+  type PaginatedResult,
+} from "@/lib/list-query";
 
 export type PurchaseStatus = "DRAFT" | "COMPLETED" | "CANCELLED";
 
@@ -99,62 +107,113 @@ async function nextPurchaseNo(kind: "gold" | "diamond") {
   return formatCode(prefix, await seq(seqName));
 }
 
-export async function getGoldPurchases() {
-  const db = await getDb();
-  const purchases = await db
-    .collection("goldPurchases")
-    .aggregate([
-      { $lookup: { from: "vendors", localField: "vendorId", foreignField: "_id", as: "vendorDoc" } },
-      { $unwind: { path: "$vendorDoc", preserveNullAndEmptyArrays: true } },
-      { $sort: { createdAt: -1 } },
-    ])
-    .toArray();
+const PURCHASE_SEARCH_FIELDS = ["purchaseNo", "invoiceNo"];
+const PURCHASE_SORT_FIELDS = [
+  "createdAt",
+  "purchaseNo",
+  "purchaseDate",
+  "invoiceDate",
+  "total",
+] as const;
 
-  return purchases.map(
-    (purchase) =>
-      ({
-        id: asString(purchase._id),
-        purchaseNo: asString(purchase.purchaseNo ?? ""),
-        vendorName: asString(purchase.vendorDoc?.companyName ?? purchase.vendorDoc?.ownerName ?? "Unknown"),
-        invoiceNo: asString(purchase.invoiceNo ?? ""),
-        invoiceDate: asString(purchase.invoiceDate ?? ""),
-        purchaseDate: asString(purchase.purchaseDate ?? ""),
-        subtotal: asString(purchase.subtotal ?? "0"),
-        gst: asString(purchase.gst ?? "0"),
-        total: asString(purchase.total ?? "0"),
-        status: (purchase.status ?? "DRAFT") as PurchaseStatus,
-        invoiceFileUrl: asString(purchase.invoiceFileUrl ?? ""),
-      }) satisfies GoldPurchaseListItem
-  );
+function defaultPurchaseQuery(): ListQuery {
+  return {
+    page: 1,
+    pageSize: 20,
+    skip: 0,
+    limit: 20,
+    search: "",
+    sortField: "createdAt",
+    sortDir: -1,
+    status: "",
+    from: "",
+    to: "",
+  };
 }
 
-export async function getDiamondPurchases() {
+async function loadPurchases(
+  collection: "goldPurchases" | "diamondPurchases",
+  query: ListQuery
+) {
   const db = await getDb();
-  const purchases = await db
-    .collection("diamondPurchases")
-    .aggregate([
-      { $lookup: { from: "vendors", localField: "vendorId", foreignField: "_id", as: "vendorDoc" } },
-      { $unwind: { path: "$vendorDoc", preserveNullAndEmptyArrays: true } },
-      { $sort: { createdAt: -1 } },
-    ])
-    .toArray();
-
-  return purchases.map(
-    (purchase) =>
-      ({
-        id: asString(purchase._id),
-        purchaseNo: asString(purchase.purchaseNo ?? ""),
-        vendorName: asString(purchase.vendorDoc?.companyName ?? purchase.vendorDoc?.ownerName ?? "Unknown"),
-        invoiceNo: asString(purchase.invoiceNo ?? ""),
-        invoiceDate: asString(purchase.invoiceDate ?? ""),
-        purchaseDate: asString(purchase.purchaseDate ?? ""),
-        subtotal: asString(purchase.subtotal ?? "0"),
-        gst: asString(purchase.gst ?? "0"),
-        total: asString(purchase.total ?? "0"),
-        status: (purchase.status ?? "DRAFT") as PurchaseStatus,
-        invoiceFileUrl: asString(purchase.invoiceFileUrl ?? ""),
-      }) satisfies DiamondPurchaseListItem
+  const filter = andFilters(
+    textSearchFilter(query.search, PURCHASE_SEARCH_FIELDS),
+    query.status ? { status: query.status } : undefined
   );
+  const sort = buildSort(
+    query.sortField,
+    query.sortDir,
+    PURCHASE_SORT_FIELDS,
+    "createdAt"
+  );
+  const [total, docs] = await Promise.all([
+    db.collection(collection).countDocuments(filter),
+    db
+      .collection(collection)
+      .aggregate([
+        { $match: filter },
+        {
+          $lookup: {
+            from: "vendors",
+            localField: "vendorId",
+            foreignField: "_id",
+            as: "vendorDoc",
+          },
+        },
+        { $unwind: { path: "$vendorDoc", preserveNullAndEmptyArrays: true } },
+        { $sort: sort as Record<string, 1 | -1> },
+        { $skip: query.skip },
+        { $limit: query.limit },
+      ])
+      .toArray(),
+  ]);
+  return { total, docs };
+}
+
+export async function getGoldPurchases(
+  query?: ListQuery
+): Promise<PaginatedResult<GoldPurchaseListItem>> {
+  const q = query ?? defaultPurchaseQuery();
+  const { total, docs } = await loadPurchases("goldPurchases", q);
+  const items: GoldPurchaseListItem[] = docs.map((purchase) => ({
+    id: asString(purchase._id),
+    purchaseNo: asString(purchase.purchaseNo ?? ""),
+    vendorName: asString(
+      purchase.vendorDoc?.companyName ?? purchase.vendorDoc?.ownerName ?? "Unknown"
+    ),
+    invoiceNo: asString(purchase.invoiceNo ?? ""),
+    invoiceDate: asString(purchase.invoiceDate ?? ""),
+    purchaseDate: asString(purchase.purchaseDate ?? ""),
+    subtotal: asString(purchase.subtotal ?? "0"),
+    gst: asString(purchase.gst ?? "0"),
+    total: asString(purchase.total ?? "0"),
+    status: (purchase.status ?? "DRAFT") as PurchaseStatus,
+    invoiceFileUrl: asString(purchase.invoiceFileUrl ?? ""),
+  }));
+  return paginate(items, total, q);
+}
+
+export async function getDiamondPurchases(
+  query?: ListQuery
+): Promise<PaginatedResult<DiamondPurchaseListItem>> {
+  const q = query ?? defaultPurchaseQuery();
+  const { total, docs } = await loadPurchases("diamondPurchases", q);
+  const items: DiamondPurchaseListItem[] = docs.map((purchase) => ({
+    id: asString(purchase._id),
+    purchaseNo: asString(purchase.purchaseNo ?? ""),
+    vendorName: asString(
+      purchase.vendorDoc?.companyName ?? purchase.vendorDoc?.ownerName ?? "Unknown"
+    ),
+    invoiceNo: asString(purchase.invoiceNo ?? ""),
+    invoiceDate: asString(purchase.invoiceDate ?? ""),
+    purchaseDate: asString(purchase.purchaseDate ?? ""),
+    subtotal: asString(purchase.subtotal ?? "0"),
+    gst: asString(purchase.gst ?? "0"),
+    total: asString(purchase.total ?? "0"),
+    status: (purchase.status ?? "DRAFT") as PurchaseStatus,
+    invoiceFileUrl: asString(purchase.invoiceFileUrl ?? ""),
+  }));
+  return paginate(items, total, q);
 }
 
 export async function getGoldPurchaseById(id: string) {

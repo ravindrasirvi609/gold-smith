@@ -4,6 +4,14 @@ import { getRoleOptions } from "@/lib/admin-roles";
 import { getDb } from "@/lib/mongodb";
 import { assertPasswordStrength } from "@/lib/password-policy";
 import { deleteR2Objects } from "@/lib/r2-cleanup";
+import {
+  andFilters,
+  buildSort,
+  paginate,
+  textSearchFilter,
+  type ListQuery,
+  type PaginatedResult,
+} from "@/lib/list-query";
 
 export type { RoleOption } from "@/lib/admin-roles";
 export { getRoleOptions };
@@ -40,46 +48,76 @@ function toObjectId(id: string) {
   return new ObjectId(id);
 }
 
-export async function getUsers() {
-  const db = await getDb();
-  const users = await db
-    .collection("users")
-    .aggregate([
-      {
-        $lookup: {
-          from: "roles",
-          localField: "role",
-          foreignField: "_id",
-          as: "roleDoc",
-        },
-      },
-      {
-        $unwind: {
-          path: "$roleDoc",
-          preserveNullAndEmptyArrays: true,
-        },
-      },
-      {
-        $sort: { createdAt: -1 },
-      },
-    ])
-    .toArray();
+const USER_SEARCH_FIELDS = ["firstName", "lastName", "email", "mobile"];
+const USER_SORT_FIELDS = ["createdAt", "firstName", "email", "status"] as const;
 
-  return users.map(
-    (user) =>
-      ({
-        id: String(user._id),
-        firstName: String(user.firstName ?? ""),
-        lastName: String(user.lastName ?? ""),
-        email: String(user.email ?? ""),
-        mobile: String(user.mobile ?? ""),
-        status: (user.status ?? "ACTIVE") as UserListItem["status"],
-        roleName: String(user.roleDoc?.name ?? "Unassigned"),
-        createdAt: user.createdAt ? new Date(user.createdAt).toISOString() : "",
-        lastLogin: user.lastLogin ? new Date(user.lastLogin).toISOString() : null,
-        profileImage: user.profileImage ? String(user.profileImage) : null,
-      }) satisfies UserListItem
+function mapUser(user: Record<string, unknown>): UserListItem {
+  const role = user.roleDoc as { name?: unknown } | undefined;
+  return {
+    id: String(user._id),
+    firstName: String(user.firstName ?? ""),
+    lastName: String(user.lastName ?? ""),
+    email: String(user.email ?? ""),
+    mobile: String(user.mobile ?? ""),
+    status: (user.status ?? "ACTIVE") as UserListItem["status"],
+    roleName: String(role?.name ?? "Unassigned"),
+    createdAt: user.createdAt
+      ? new Date(user.createdAt as string).toISOString()
+      : "",
+    lastLogin: user.lastLogin
+      ? new Date(user.lastLogin as string).toISOString()
+      : null,
+    profileImage: user.profileImage ? String(user.profileImage) : null,
+  } satisfies UserListItem;
+}
+
+export async function getUsers(
+  query?: ListQuery
+): Promise<PaginatedResult<UserListItem>> {
+  const db = await getDb();
+  const q: ListQuery = query ?? {
+    page: 1,
+    pageSize: 20,
+    skip: 0,
+    limit: 20,
+    search: "",
+    sortField: "createdAt",
+    sortDir: -1,
+    status: "",
+    from: "",
+    to: "",
+  };
+  const filter = andFilters(
+    textSearchFilter(q.search, USER_SEARCH_FIELDS),
+    q.status ? { status: q.status } : undefined
   );
+  const sort = buildSort(q.sortField, q.sortDir, USER_SORT_FIELDS, "createdAt");
+
+  const [total, docs] = await Promise.all([
+    db.collection("users").countDocuments(filter),
+    db
+      .collection("users")
+      .aggregate([
+        { $match: filter },
+        {
+          $lookup: {
+            from: "roles",
+            localField: "role",
+            foreignField: "_id",
+            as: "roleDoc",
+          },
+        },
+        {
+          $unwind: { path: "$roleDoc", preserveNullAndEmptyArrays: true },
+        },
+        { $sort: sort as Record<string, 1 | -1> },
+        { $skip: q.skip },
+        { $limit: q.limit },
+      ])
+      .toArray(),
+  ]);
+
+  return paginate(docs.map(mapUser), total, q);
 }
 
 export async function getUserById(id: string) {

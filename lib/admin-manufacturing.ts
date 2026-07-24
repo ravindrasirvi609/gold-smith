@@ -1,5 +1,13 @@
 import { ObjectId } from "mongodb";
 import { getDb } from "@/lib/mongodb";
+import {
+  andFilters,
+  buildSort,
+  paginate,
+  textSearchFilter,
+  type ListQuery,
+  type PaginatedResult,
+} from "@/lib/list-query";
 
 export type IssueStatus = "DRAFT" | "ISSUED" | "PARTIALLY_RECEIVED" | "COMPLETED" | "CANCELLED";
 export type ReceiptStatus = "PENDING" | "COMPLETED" | "REJECTED";
@@ -107,14 +115,76 @@ export async function getIssueOptions() {
   ]).toArray();
 }
 
-export async function getIssues() {
+export type IssueListItem = {
+  id: string;
+  issueNo: string;
+  issueDate: string;
+  karigarName: string;
+  status: string;
+  goldCount: number;
+  diamondCount: number;
+};
+
+const ISSUE_SEARCH_FIELDS = ["issueNo", "designReference", "notes"];
+const ISSUE_SORT_FIELDS = ["createdAt", "issueNo", "issueDate"] as const;
+
+function defaultManufacturingQuery(): ListQuery {
+  return {
+    page: 1,
+    pageSize: 20,
+    skip: 0,
+    limit: 20,
+    search: "",
+    sortField: "createdAt",
+    sortDir: -1,
+    status: "",
+    from: "",
+    to: "",
+  };
+}
+
+/**
+ * Return a lightweight list of open karigar issues (status ISSUED or
+ * PARTIALLY_RECEIVED) for the "create receipt" picker. Not paginated.
+ */
+export async function getOpenIssueOptions(): Promise<Array<{ id: string; issueNo: string }>> {
   const db = await getDb();
-  const issues = await db.collection("karigarIssues").aggregate([
-    { $lookup: { from: "karigars", localField: "karigarId", foreignField: "_id", as: "karigarDoc" } },
-    { $unwind: { path: "$karigarDoc", preserveNullAndEmptyArrays: true } },
-    { $sort: { createdAt: -1 } },
-  ]).toArray();
-  return issues.map((issue) => ({
+  const rows = await db
+    .collection("karigarIssues")
+    .find(
+      { status: { $in: ["ISSUED", "PARTIALLY_RECEIVED"] } },
+      { projection: { issueNo: 1 } }
+    )
+    .sort({ createdAt: -1 })
+    .toArray();
+  return rows.map((r) => ({
+    id: String(r._id),
+    issueNo: String(r.issueNo ?? ""),
+  }));
+}
+
+export async function getIssues(
+  query?: ListQuery
+): Promise<PaginatedResult<IssueListItem>> {
+  const db = await getDb();
+  const q = query ?? defaultManufacturingQuery();
+  const filter = andFilters(
+    textSearchFilter(q.search, ISSUE_SEARCH_FIELDS),
+    q.status ? { status: q.status } : undefined
+  );
+  const sort = buildSort(q.sortField, q.sortDir, ISSUE_SORT_FIELDS, "createdAt");
+  const [total, docs] = await Promise.all([
+    db.collection("karigarIssues").countDocuments(filter),
+    db.collection("karigarIssues").aggregate([
+      { $match: filter },
+      { $lookup: { from: "karigars", localField: "karigarId", foreignField: "_id", as: "karigarDoc" } },
+      { $unwind: { path: "$karigarDoc", preserveNullAndEmptyArrays: true } },
+      { $sort: sort as Record<string, 1 | -1> },
+      { $skip: q.skip },
+      { $limit: q.limit },
+    ]).toArray(),
+  ]);
+  const items: IssueListItem[] = docs.map((issue) => ({
     id: String(issue._id),
     issueNo: String(issue.issueNo ?? ""),
     issueDate: String(issue.issueDate ?? ""),
@@ -123,6 +193,7 @@ export async function getIssues() {
     goldCount: Array.isArray(issue.gold) ? issue.gold.length : 0,
     diamondCount: Array.isArray(issue.diamonds) ? issue.diamonds.length : 0,
   }));
+  return paginate(items, total, q);
 }
 
 export async function getIssueById(id: string) {
@@ -225,15 +296,42 @@ export async function deleteIssue(id: string) {
   return { id };
 }
 
-export async function getReceipts() {
+export type ReceiptListItem = {
+  id: string;
+  receiptNo: string;
+  receiveDate: string;
+  karigarName: string;
+  status: string;
+  labourCharge: string;
+  issueNo: string;
+};
+
+const RECEIPT_SEARCH_FIELDS = ["receiptNo"];
+const RECEIPT_SORT_FIELDS = ["createdAt", "receiptNo", "receiveDate"] as const;
+
+export async function getReceipts(
+  query?: ListQuery
+): Promise<PaginatedResult<ReceiptListItem>> {
   const db = await getDb();
-  const receipts = await db.collection("karigarReceipts").aggregate([
-    { $lookup: { from: "karigarIssues", localField: "issueId", foreignField: "_id", as: "issueDoc" } },
-    { $lookup: { from: "karigars", localField: "karigarId", foreignField: "_id", as: "karigarDoc" } },
-    { $unwind: { path: "$karigarDoc", preserveNullAndEmptyArrays: true } },
-    { $sort: { createdAt: -1 } },
-  ]).toArray();
-  return receipts.map((receipt) => ({
+  const q = query ?? defaultManufacturingQuery();
+  const filter = andFilters(
+    textSearchFilter(q.search, RECEIPT_SEARCH_FIELDS),
+    q.status ? { status: q.status } : undefined
+  );
+  const sort = buildSort(q.sortField, q.sortDir, RECEIPT_SORT_FIELDS, "createdAt");
+  const [total, docs] = await Promise.all([
+    db.collection("karigarReceipts").countDocuments(filter),
+    db.collection("karigarReceipts").aggregate([
+      { $match: filter },
+      { $lookup: { from: "karigarIssues", localField: "issueId", foreignField: "_id", as: "issueDoc" } },
+      { $lookup: { from: "karigars", localField: "karigarId", foreignField: "_id", as: "karigarDoc" } },
+      { $unwind: { path: "$karigarDoc", preserveNullAndEmptyArrays: true } },
+      { $sort: sort as Record<string, 1 | -1> },
+      { $skip: q.skip },
+      { $limit: q.limit },
+    ]).toArray(),
+  ]);
+  const items: ReceiptListItem[] = docs.map((receipt) => ({
     id: String(receipt._id),
     receiptNo: String(receipt.receiptNo ?? ""),
     receiveDate: String(receipt.receiveDate ?? ""),
@@ -242,6 +340,7 @@ export async function getReceipts() {
     labourCharge: String(receipt.labourCharge ?? "0"),
     issueNo: String(receipt.issueDoc?.[0]?.issueNo ?? ""),
   }));
+  return paginate(items, total, q);
 }
 
 export async function getReceiptById(id: string) {
@@ -338,9 +437,233 @@ export async function createReceipt(input: {
   return { id: String(result.insertedId) };
 }
 
-export async function getProducts() {
+/**
+ * Update a karigar receipt.
+ *
+ * Rules:
+ *  - Once a receipt is COMPLETED and its products are downstream (sold, on
+ *    approval, etc.) the receipt fields become mostly immutable to protect
+ *    downstream references. We allow only status, labourCharge, and
+ *    signedReceiptUrl changes in that case.
+ *  - Transitioning a PENDING receipt to COMPLETED triggers the same
+ *    product-creation flow as createReceipt.
+ */
+export async function updateReceipt(
+  id: string,
+  input: {
+    receiveDate: string;
+    labourCharge: string;
+    labourType: string;
+    jewellery: ReceiptJewelItem[];
+    status: ReceiptStatus;
+    signedReceiptUrl?: string;
+    productImageUrl?: string;
+  },
+  updatedBy?: string
+) {
   const db = await getDb();
-  return db.collection("products").find({}).sort({ createdAt: -1 }).toArray();
+  const receiptId = oid(id);
+  const existing = await db
+    .collection("karigarReceipts")
+    .findOne({ _id: receiptId });
+  if (!existing) throw new Error("Receipt not found.");
+
+  const wasCompleted = existing.status === "COMPLETED";
+  const willBeCompleted = input.status === "COMPLETED";
+  const now = new Date();
+  const receiptNo = String(existing.receiptNo ?? "");
+
+  // If products have already been created from this receipt, only allow
+  // metadata changes — never rewrite jewellery.
+  const linkedProducts = await db
+    .collection("products")
+    .countDocuments({ karigarReceipt: receiptId });
+
+  if (wasCompleted && linkedProducts > 0) {
+    await db.collection("karigarReceipts").updateOne(
+      { _id: receiptId },
+      {
+        $set: {
+          labourCharge: text(input.labourCharge),
+          labourType: text(input.labourType),
+          signedReceiptUrl: text(input.signedReceiptUrl ?? ""),
+          updatedBy: updatedBy ? oid(updatedBy) : null,
+          updatedAt: now,
+        },
+      }
+    );
+    return { id };
+  }
+
+  await db.collection("karigarReceipts").updateOne(
+    { _id: receiptId },
+    {
+      $set: {
+        receiveDate: text(input.receiveDate),
+        labourCharge: text(input.labourCharge),
+        labourType: text(input.labourType),
+        jewellery: input.jewellery,
+        status: input.status,
+        signedReceiptUrl: text(input.signedReceiptUrl ?? ""),
+        updatedBy: updatedBy ? oid(updatedBy) : null,
+        updatedAt: now,
+      },
+    }
+  );
+
+  if (!wasCompleted && willBeCompleted) {
+    for (const jewel of input.jewellery) {
+      await createProductFromReceipt(
+        receiptId,
+        receiptNo,
+        jewel,
+        input.productImageUrl ?? "",
+        updatedBy
+      );
+    }
+    if (existing.issueId) {
+      await db.collection("karigarIssues").updateOne(
+        { _id: existing.issueId as ObjectId },
+        { $set: { status: "COMPLETED", updatedAt: now } }
+      );
+    }
+  }
+
+  return { id };
+}
+
+/**
+ * Delete a karigar receipt. Blocked if any downstream product is not
+ * disposable (i.e. sold or on approval) — those products would lose their
+ * chain of custody. Cleans up related productHistory and R2 attachments.
+ */
+export async function deleteReceipt(id: string) {
+  const { deleteR2Objects } = await import("@/lib/r2-cleanup");
+  const db = await getDb();
+  const receiptId = oid(id);
+  const existing = await db
+    .collection("karigarReceipts")
+    .findOne({ _id: receiptId });
+  if (!existing) throw new Error("Receipt not found.");
+
+  const products = await db
+    .collection("products")
+    .find({ karigarReceipt: receiptId })
+    .toArray();
+  const productIds = products.map((p) => p._id);
+  const blocked = products.filter(
+    (p) => p.status !== "AVAILABLE" && p.status !== "SCRAPPED"
+  );
+  if (blocked.length > 0) {
+    throw new Error(
+      `Cannot delete receipt — ${blocked.length} downstream product(s) are on approval or sold. Reverse those first.`
+    );
+  }
+
+  await db.collection("products").deleteMany({ karigarReceipt: receiptId });
+  await db
+    .collection("productHistory")
+    .deleteMany({ productId: { $in: productIds } });
+  await db.collection("karigarReceipts").deleteOne({ _id: receiptId });
+  await deleteR2Objects([existing.signedReceiptUrl as string]);
+  return { id };
+}
+
+/**
+ * Delete a product. Only permitted while the product is AVAILABLE — sold,
+ * on-approval, and reserved products stay in place for audit reasons.
+ */
+export async function deleteProduct(id: string) {
+  const { deleteR2Objects } = await import("@/lib/r2-cleanup");
+  const db = await getDb();
+  const productId = oid(id);
+  const existing = await db
+    .collection("products")
+    .findOne({ _id: productId });
+  if (!existing) throw new Error("Product not found.");
+  if (existing.status !== "AVAILABLE") {
+    throw new Error(
+      `Cannot delete product in status "${String(existing.status)}". Only AVAILABLE products can be removed.`
+    );
+  }
+  await db.collection("productHistory").deleteMany({ productId });
+  await db.collection("products").deleteOne({ _id: productId });
+  await deleteR2Objects([existing.image as string]);
+  return { id };
+}
+
+export type ProductListItem = {
+  id: string;
+  jewelCode: string;
+  productName: string;
+  category: string;
+  subCategory: string;
+  purity: string;
+  netWeight: string;
+  status: string;
+  location: string;
+  image: string;
+  createdAt: string;
+};
+
+const PRODUCT_SEARCH_FIELDS = [
+  "jewelCode",
+  "productName",
+  "category",
+  "subCategory",
+  "purity",
+];
+const PRODUCT_SORT_FIELDS = [
+  "createdAt",
+  "productName",
+  "jewelCode",
+  "status",
+] as const;
+
+function mapProduct(product: Record<string, unknown>): ProductListItem {
+  return {
+    id: String(product._id),
+    jewelCode: String(product.jewelCode ?? ""),
+    productName: String(product.productName ?? ""),
+    category: String(product.category ?? ""),
+    subCategory: String(product.subCategory ?? ""),
+    purity: String(product.purity ?? ""),
+    netWeight: String(product.netWeight ?? ""),
+    status: String(product.status ?? ""),
+    location: String(product.location ?? ""),
+    image: String(product.image ?? ""),
+    createdAt: product.createdAt
+      ? new Date(product.createdAt as string).toISOString()
+      : "",
+  } satisfies ProductListItem;
+}
+
+export async function getProducts(
+  query?: ListQuery
+): Promise<PaginatedResult<ProductListItem>> {
+  const db = await getDb();
+  const q: ListQuery = query ?? {
+    page: 1,
+    pageSize: 20,
+    skip: 0,
+    limit: 20,
+    search: "",
+    sortField: "createdAt",
+    sortDir: -1,
+    status: "",
+    from: "",
+    to: "",
+  };
+  const filter = andFilters(
+    textSearchFilter(q.search, PRODUCT_SEARCH_FIELDS),
+    q.status ? { status: q.status } : undefined
+  );
+  const sort = buildSort(q.sortField, q.sortDir, PRODUCT_SORT_FIELDS, "createdAt");
+  const [total, docs] = await Promise.all([
+    db.collection("products").countDocuments(filter),
+    db.collection("products").find(filter).sort(sort).skip(q.skip).limit(q.limit).toArray(),
+  ]);
+  return paginate(docs.map(mapProduct), total, q);
 }
 
 export async function getProductById(id: string) {

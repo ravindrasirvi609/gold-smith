@@ -1,5 +1,13 @@
 import { ObjectId } from "mongodb";
 import { getDb } from "@/lib/mongodb";
+import {
+  andFilters,
+  buildSort,
+  paginate,
+  textSearchFilter,
+  type ListQuery,
+  type PaginatedResult,
+} from "@/lib/list-query";
 
 export type ApprovalStatus = "DRAFT" | "ISSUED" | "PARTIALLY_RETURNED" | "RETURNED" | "CONVERTED_TO_SALE" | "CANCELLED" | "EXPIRED";
 export type InvoiceStatus = "DRAFT" | "PENDING_PAYMENT" | "PAID" | "PARTIALLY_PAID" | "CANCELLED" | "RETURNED";
@@ -85,15 +93,56 @@ async function getAvailableProduct(productId: string) {
   return product;
 }
 
-export async function getApprovals() {
-  const db = await getDb();
-  const approvals = await db.collection("approvals").aggregate([
-    { $lookup: { from: "customers", localField: "customerId", foreignField: "_id", as: "customerDoc" } },
-    { $unwind: { path: "$customerDoc", preserveNullAndEmptyArrays: true } },
-    { $sort: { createdAt: -1 } },
-  ]).toArray();
+export type ApprovalListItem = {
+  id: string;
+  approvalNo: string;
+  customerName: string;
+  issueDate: string;
+  expectedReturnDate: string;
+  status: ApprovalStatus;
+  productCount: number;
+};
 
-  return approvals.map((approval) => ({
+const APPROVAL_SEARCH_FIELDS = ["approvalNo", "purpose"];
+const APPROVAL_SORT_FIELDS = ["createdAt", "approvalNo", "status"] as const;
+
+function defaultListQuery(): ListQuery {
+  return {
+    page: 1,
+    pageSize: 20,
+    skip: 0,
+    limit: 20,
+    search: "",
+    sortField: "createdAt",
+    sortDir: -1,
+    status: "",
+    from: "",
+    to: "",
+  };
+}
+
+export async function getApprovals(
+  query?: ListQuery
+): Promise<PaginatedResult<ApprovalListItem>> {
+  const db = await getDb();
+  const q = query ?? defaultListQuery();
+  const filter = andFilters(
+    textSearchFilter(q.search, APPROVAL_SEARCH_FIELDS),
+    q.status ? { status: q.status } : undefined
+  );
+  const sort = buildSort(q.sortField, q.sortDir, APPROVAL_SORT_FIELDS, "createdAt");
+  const [total, docs] = await Promise.all([
+    db.collection("approvals").countDocuments(filter),
+    db.collection("approvals").aggregate([
+      { $match: filter },
+      { $lookup: { from: "customers", localField: "customerId", foreignField: "_id", as: "customerDoc" } },
+      { $unwind: { path: "$customerDoc", preserveNullAndEmptyArrays: true } },
+      { $sort: sort as Record<string, 1 | -1> },
+      { $skip: q.skip },
+      { $limit: q.limit },
+    ]).toArray(),
+  ]);
+  const items: ApprovalListItem[] = docs.map((approval) => ({
     id: s(approval._id),
     approvalNo: s(approval.approvalNo ?? ""),
     customerName: s(approval.customerDoc?.firstName ? `${approval.customerDoc.firstName} ${approval.customerDoc.lastName ?? ""}`.trim() : "Unknown"),
@@ -102,6 +151,7 @@ export async function getApprovals() {
     status: s(approval.status ?? "DRAFT") as ApprovalStatus,
     productCount: Array.isArray(approval.products) ? approval.products.length : 0,
   }));
+  return paginate(items, total, q);
 }
 
 export async function getApprovalById(id: string) {
@@ -188,14 +238,41 @@ export async function updateApproval(id: string, input: Parameters<typeof create
   return { id };
 }
 
-export async function getInvoices() {
+export type InvoiceListItem = {
+  id: string;
+  invoiceNo: string;
+  customerName: string;
+  invoiceDate: string;
+  grandTotal: string;
+  paymentStatus: InvoiceStatus;
+  saleType: string;
+};
+
+const INVOICE_SEARCH_FIELDS = ["invoiceNo", "saleType"];
+const INVOICE_SORT_FIELDS = ["createdAt", "invoiceNo", "invoiceDate"] as const;
+
+export async function getInvoices(
+  query?: ListQuery
+): Promise<PaginatedResult<InvoiceListItem>> {
   const db = await getDb();
-  const invoices = await db.collection("invoices").aggregate([
-    { $lookup: { from: "customers", localField: "customerId", foreignField: "_id", as: "customerDoc" } },
-    { $unwind: { path: "$customerDoc", preserveNullAndEmptyArrays: true } },
-    { $sort: { createdAt: -1 } },
-  ]).toArray();
-  return invoices.map((invoice) => ({
+  const q = query ?? defaultListQuery();
+  const filter = andFilters(
+    textSearchFilter(q.search, INVOICE_SEARCH_FIELDS),
+    q.status ? { paymentStatus: q.status } : undefined
+  );
+  const sort = buildSort(q.sortField, q.sortDir, INVOICE_SORT_FIELDS, "createdAt");
+  const [total, docs] = await Promise.all([
+    db.collection("invoices").countDocuments(filter),
+    db.collection("invoices").aggregate([
+      { $match: filter },
+      { $lookup: { from: "customers", localField: "customerId", foreignField: "_id", as: "customerDoc" } },
+      { $unwind: { path: "$customerDoc", preserveNullAndEmptyArrays: true } },
+      { $sort: sort as Record<string, 1 | -1> },
+      { $skip: q.skip },
+      { $limit: q.limit },
+    ]).toArray(),
+  ]);
+  const items: InvoiceListItem[] = docs.map((invoice) => ({
     id: s(invoice._id),
     invoiceNo: s(invoice.invoiceNo ?? ""),
     customerName: s(invoice.customerDoc?.firstName ? `${invoice.customerDoc.firstName} ${invoice.customerDoc.lastName ?? ""}`.trim() : "Unknown"),
@@ -204,6 +281,7 @@ export async function getInvoices() {
     paymentStatus: s(invoice.paymentStatus ?? "DRAFT") as InvoiceStatus,
     saleType: s(invoice.saleType ?? "Direct"),
   }));
+  return paginate(items, total, q);
 }
 
 export async function getInvoiceById(id: string) {
@@ -278,16 +356,45 @@ export async function createInvoice(input: {
   return { id: s(result.insertedId) };
 }
 
-export async function getPayments() {
+export type PaymentListItem = {
+  id: string;
+  paymentNo: string;
+  invoiceNo: string;
+  customerName: string;
+  paymentDate: string;
+  paymentType: string;
+  amount: string;
+  status: PaymentStatus;
+  attachmentUrl: string;
+};
+
+const PAYMENT_SEARCH_FIELDS = ["paymentNo", "paymentType", "referenceNo"];
+const PAYMENT_SORT_FIELDS = ["createdAt", "paymentNo", "paymentDate"] as const;
+
+async function getPaymentsInternal(
+  query?: ListQuery
+): Promise<PaginatedResult<PaymentListItem>> {
   const db = await getDb();
-  const payments = await db.collection("payments").aggregate([
-    { $lookup: { from: "invoices", localField: "invoiceId", foreignField: "_id", as: "invoiceDoc" } },
-    { $lookup: { from: "customers", localField: "customerId", foreignField: "_id", as: "customerDoc" } },
-    { $unwind: { path: "$invoiceDoc", preserveNullAndEmptyArrays: true } },
-    { $unwind: { path: "$customerDoc", preserveNullAndEmptyArrays: true } },
-    { $sort: { createdAt: -1 } },
-  ]).toArray();
-  return payments.map((payment) => ({
+  const q = query ?? defaultListQuery();
+  const filter = andFilters(
+    textSearchFilter(q.search, PAYMENT_SEARCH_FIELDS),
+    q.status ? { status: q.status } : undefined
+  );
+  const sort = buildSort(q.sortField, q.sortDir, PAYMENT_SORT_FIELDS, "createdAt");
+  const [total, docs] = await Promise.all([
+    db.collection("payments").countDocuments(filter),
+    db.collection("payments").aggregate([
+      { $match: filter },
+      { $lookup: { from: "invoices", localField: "invoiceId", foreignField: "_id", as: "invoiceDoc" } },
+      { $lookup: { from: "customers", localField: "customerId", foreignField: "_id", as: "customerDoc" } },
+      { $unwind: { path: "$invoiceDoc", preserveNullAndEmptyArrays: true } },
+      { $unwind: { path: "$customerDoc", preserveNullAndEmptyArrays: true } },
+      { $sort: sort as Record<string, 1 | -1> },
+      { $skip: q.skip },
+      { $limit: q.limit },
+    ]).toArray(),
+  ]);
+  const items: PaymentListItem[] = docs.map((payment) => ({
     id: s(payment._id),
     paymentNo: s(payment.paymentNo ?? ""),
     invoiceNo: s(payment.invoiceDoc?.invoiceNo ?? ""),
@@ -298,7 +405,10 @@ export async function getPayments() {
     status: s(payment.status ?? "PENDING") as PaymentStatus,
     attachmentUrl: s(payment.attachmentUrl ?? ""),
   }));
+  return paginate(items, total, q);
 }
+
+export const getPayments = getPaymentsInternal;
 
 export async function createPayment(input: {
   invoiceId: string;
@@ -355,12 +465,401 @@ export async function upsertSetting(input: { key: string; value: unknown; descri
   return { key: input.key };
 }
 
-export async function getAuditLogs() {
+export type AuditLogListItem = {
+  id: string;
+  module: string;
+  action: string;
+  description: string;
+  userName: string;
+  userEmail: string;
+  referenceType: string;
+  referenceId: string;
+  createdAt: string;
+};
+
+const AUDIT_SEARCH_FIELDS = ["module", "action", "description", "referenceType"];
+const AUDIT_SORT_FIELDS = ["createdAt"] as const;
+
+export async function getAuditLogs(
+  query?: ListQuery
+): Promise<PaginatedResult<AuditLogListItem>> {
   const db = await getDb();
-  return db.collection("auditLogs").aggregate([
-    { $lookup: { from: "users", localField: "userId", foreignField: "_id", as: "userDoc" } },
-    { $unwind: { path: "$userDoc", preserveNullAndEmptyArrays: true } },
-    { $sort: { createdAt: -1 } },
-    { $limit: 200 },
-  ]).toArray();
+  const q = query ?? { ...defaultListQuery(), pageSize: 50, limit: 50 };
+  const filter = andFilters(
+    textSearchFilter(q.search, AUDIT_SEARCH_FIELDS),
+    q.status ? { module: q.status } : undefined
+  );
+  const sort = buildSort(q.sortField, q.sortDir, AUDIT_SORT_FIELDS, "createdAt");
+  const [total, docs] = await Promise.all([
+    db.collection("auditLogs").countDocuments(filter),
+    db.collection("auditLogs").aggregate([
+      { $match: filter },
+      { $lookup: { from: "users", localField: "userId", foreignField: "_id", as: "userDoc" } },
+      { $unwind: { path: "$userDoc", preserveNullAndEmptyArrays: true } },
+      { $sort: sort as Record<string, 1 | -1> },
+      { $skip: q.skip },
+      { $limit: q.limit },
+    ]).toArray(),
+  ]);
+  const items: AuditLogListItem[] = docs.map((log) => ({
+    id: s(log._id),
+    module: s(log.module ?? ""),
+    action: s(log.action ?? ""),
+    description: s(log.description ?? ""),
+    userName: s(log.userDoc?.firstName ? `${log.userDoc.firstName} ${log.userDoc.lastName ?? ""}`.trim() : "System"),
+    userEmail: s(log.userDoc?.email ?? ""),
+    referenceType: s(log.referenceType ?? ""),
+    referenceId: s(log.referenceId ?? ""),
+    createdAt: log.createdAt ? new Date(log.createdAt as string).toISOString() : "",
+  }));
+  return paginate(items, total, q);
+}
+
+// =====================================================================
+// Approvals — cancel, return, delete
+// =====================================================================
+
+/**
+ * Cancel an approval that hasn't been converted to a sale. Restores each
+ * referenced product back to AVAILABLE / STORE.
+ */
+export async function cancelApproval(id: string, userId?: string) {
+  const db = await getDb();
+  const approvalId = oid(id);
+  const approval = await db
+    .collection("approvals")
+    .findOne({ _id: approvalId });
+  if (!approval) throw new Error("Approval not found.");
+  if (approval.status === "CONVERTED_TO_SALE") {
+    throw new Error("Cannot cancel — this approval has been converted to a sale.");
+  }
+  if (approval.status === "CANCELLED") {
+    throw new Error("Approval is already cancelled.");
+  }
+
+  const now = new Date();
+  const products = Array.isArray(approval.products) ? approval.products : [];
+  for (const row of products) {
+    const productId = row.productId;
+    if (!productId) continue;
+    await db.collection("products").updateOne(
+      { _id: productId },
+      { $set: { status: "AVAILABLE", currentLocation: "STORE", updatedAt: now } }
+    );
+    await db.collection("productHistory").insertOne({
+      productId,
+      event: "APPROVAL_CANCELLED",
+      referenceType: "Approval",
+      referenceId: s(approvalId),
+      performedBy: userId ? oid(userId) : null,
+      date: now,
+      location: "STORE",
+      remarks: `Approval ${s(approval.approvalNo ?? "")} cancelled`,
+      createdAt: now,
+      updatedAt: now,
+    });
+  }
+
+  await db.collection("approvals").updateOne(
+    { _id: approvalId },
+    {
+      $set: {
+        status: "CANCELLED",
+        cancelledAt: now,
+        updatedBy: userId ? oid(userId) : null,
+        updatedAt: now,
+      },
+    }
+  );
+  await logAudit({
+    userId,
+    module: "Approval",
+    action: "Cancel",
+    referenceType: "Approval",
+    referenceId: id,
+    description: `Cancelled approval ${s(approval.approvalNo ?? "")}`,
+  });
+  return { id };
+}
+
+/**
+ * Return specific products from an approval back to stock. If all products
+ * on the approval are returned, the approval transitions to RETURNED.
+ */
+export async function returnApprovalProducts(
+  id: string,
+  productIds: string[],
+  userId?: string
+) {
+  const db = await getDb();
+  const approvalId = oid(id);
+  const approval = await db
+    .collection("approvals")
+    .findOne({ _id: approvalId });
+  if (!approval) throw new Error("Approval not found.");
+  if (approval.status === "CANCELLED" || approval.status === "CONVERTED_TO_SALE") {
+    throw new Error(
+      "Cannot return products from a cancelled or converted approval."
+    );
+  }
+  if (!productIds.length) throw new Error("Select at least one product to return.");
+
+  const now = new Date();
+  const returnedSet = new Set(productIds);
+  const products = Array.isArray(approval.products) ? approval.products : [];
+
+  for (const row of products) {
+    if (!row.productId || !returnedSet.has(String(row.productId))) continue;
+    await db.collection("products").updateOne(
+      { _id: row.productId },
+      { $set: { status: "AVAILABLE", currentLocation: "STORE", updatedAt: now } }
+    );
+    await db.collection("productHistory").insertOne({
+      productId: row.productId,
+      event: "APPROVAL_RETURN",
+      referenceType: "Approval",
+      referenceId: s(approvalId),
+      performedBy: userId ? oid(userId) : null,
+      date: now,
+      location: "STORE",
+      remarks: `Returned from approval ${s(approval.approvalNo ?? "")}`,
+      createdAt: now,
+      updatedAt: now,
+    });
+  }
+
+  const returned = Array.isArray(approval.returned) ? approval.returned : [];
+  const newReturned = Array.from(new Set([...returned, ...productIds]));
+  const allReturned = products.every(
+    (row) => row.productId && newReturned.includes(String(row.productId))
+  );
+  await db.collection("approvals").updateOne(
+    { _id: approvalId },
+    {
+      $set: {
+        returned: newReturned,
+        status: allReturned ? "RETURNED" : "PARTIALLY_RETURNED",
+        updatedBy: userId ? oid(userId) : null,
+        updatedAt: now,
+      },
+    }
+  );
+  await logAudit({
+    userId,
+    module: "Approval",
+    action: "Return",
+    referenceType: "Approval",
+    referenceId: id,
+    description: `Returned ${productIds.length} product(s) from ${s(approval.approvalNo ?? "")}`,
+    newData: { productIds },
+  });
+  return { id, returned: newReturned, allReturned };
+}
+
+/**
+ * Delete an approval outright. Only allowed for DRAFT or CANCELLED
+ * approvals — never for anything with a live product allocation.
+ */
+export async function deleteApproval(id: string, userId?: string) {
+  const db = await getDb();
+  const approvalId = oid(id);
+  const approval = await db
+    .collection("approvals")
+    .findOne({ _id: approvalId });
+  if (!approval) throw new Error("Approval not found.");
+  if (!(approval.status === "DRAFT" || approval.status === "CANCELLED")) {
+    throw new Error(
+      `Cannot delete an approval in status "${s(approval.status)}". Cancel it first.`
+    );
+  }
+  await db.collection("approvals").deleteOne({ _id: approvalId });
+  await logAudit({
+    userId,
+    module: "Approval",
+    action: "Delete",
+    referenceType: "Approval",
+    referenceId: id,
+    description: `Deleted approval ${s(approval.approvalNo ?? "")}`,
+  });
+  return { id };
+}
+
+// =====================================================================
+// Invoices — cancel, delete
+// =====================================================================
+
+/**
+ * Cancel an invoice. Restores every referenced product to AVAILABLE, marks
+ * the invoice CANCELLED, and refunds any linked payments (marks them
+ * REFUNDED so they don't count toward paid totals).
+ */
+export async function cancelInvoice(id: string, userId?: string) {
+  const db = await getDb();
+  const invoiceId = oid(id);
+  const invoice = await db
+    .collection("invoices")
+    .findOne({ _id: invoiceId });
+  if (!invoice) throw new Error("Invoice not found.");
+  if (invoice.paymentStatus === "CANCELLED") {
+    throw new Error("Invoice is already cancelled.");
+  }
+
+  const now = new Date();
+  const products = Array.isArray(invoice.products) ? invoice.products : [];
+  for (const row of products) {
+    if (!row.productId) continue;
+    await db.collection("products").updateOne(
+      { _id: row.productId },
+      { $set: { status: "AVAILABLE", currentLocation: "STORE", updatedAt: now } }
+    );
+    await db.collection("productHistory").insertOne({
+      productId: row.productId,
+      event: "INVOICE_CANCELLED",
+      referenceType: "Invoice",
+      referenceId: s(invoiceId),
+      performedBy: userId ? oid(userId) : null,
+      date: now,
+      location: "STORE",
+      remarks: `Invoice ${s(invoice.invoiceNo ?? "")} cancelled`,
+      createdAt: now,
+      updatedAt: now,
+    });
+  }
+
+  await db.collection("payments").updateMany(
+    { invoiceId, status: { $ne: "REFUNDED" } },
+    { $set: { status: "REFUNDED", refundedAt: now, updatedAt: now } }
+  );
+
+  await db.collection("invoices").updateOne(
+    { _id: invoiceId },
+    {
+      $set: {
+        paymentStatus: "CANCELLED",
+        cancelledAt: now,
+        cancelledBy: userId ? oid(userId) : null,
+        updatedAt: now,
+      },
+    }
+  );
+  await logAudit({
+    userId,
+    module: "Invoice",
+    action: "Cancel",
+    referenceType: "Invoice",
+    referenceId: id,
+    description: `Cancelled invoice ${s(invoice.invoiceNo ?? "")}`,
+  });
+  return { id };
+}
+
+/**
+ * Delete an invoice. Only permitted for DRAFT invoices — everything else
+ * has downstream artifacts (payments, product status changes) that must be
+ * unwound by a cancel first.
+ */
+export async function deleteInvoice(id: string, userId?: string) {
+  const db = await getDb();
+  const invoiceId = oid(id);
+  const invoice = await db.collection("invoices").findOne({ _id: invoiceId });
+  if (!invoice) throw new Error("Invoice not found.");
+  if (invoice.paymentStatus !== "DRAFT") {
+    throw new Error(
+      `Cannot delete an invoice in status "${s(invoice.paymentStatus)}". Cancel it first.`
+    );
+  }
+  await db.collection("invoices").deleteOne({ _id: invoiceId });
+  await logAudit({
+    userId,
+    module: "Invoice",
+    action: "Delete",
+    referenceType: "Invoice",
+    referenceId: id,
+    description: `Deleted draft invoice ${s(invoice.invoiceNo ?? "")}`,
+  });
+  return { id };
+}
+
+// =====================================================================
+// Payments — refund, delete
+// =====================================================================
+
+/**
+ * Refund a payment. Marks the payment REFUNDED but keeps the record in
+ * place. Optionally re-opens the invoice if it was fully paid.
+ */
+export async function refundPayment(id: string, userId?: string) {
+  const db = await getDb();
+  const paymentId = oid(id);
+  const payment = await db
+    .collection("payments")
+    .findOne({ _id: paymentId });
+  if (!payment) throw new Error("Payment not found.");
+  if (payment.status === "REFUNDED") {
+    throw new Error("Payment is already refunded.");
+  }
+  const now = new Date();
+  await db.collection("payments").updateOne(
+    { _id: paymentId },
+    {
+      $set: {
+        status: "REFUNDED",
+        refundedAt: now,
+        refundedBy: userId ? oid(userId) : null,
+        updatedAt: now,
+      },
+    }
+  );
+  // If the invoice was fully paid, transition back to PARTIALLY_PAID so the
+  // outstanding balance is visible again.
+  if (payment.invoiceId) {
+    const invoice = await db
+      .collection("invoices")
+      .findOne({ _id: payment.invoiceId as ObjectId });
+    if (invoice && invoice.paymentStatus === "PAID") {
+      await db.collection("invoices").updateOne(
+        { _id: payment.invoiceId as ObjectId },
+        { $set: { paymentStatus: "PARTIALLY_PAID", updatedAt: now } }
+      );
+    }
+  }
+  await logAudit({
+    userId,
+    module: "Payment",
+    action: "Refund",
+    referenceType: "Payment",
+    referenceId: id,
+    description: `Refunded payment ${s(payment.paymentNo ?? "")}`,
+  });
+  return { id };
+}
+
+/**
+ * Delete a payment. Only PENDING payments can be deleted outright — for
+ * anything already applied, use refundPayment.
+ */
+export async function deletePayment(id: string, userId?: string) {
+  const { deleteR2Objects } = await import("@/lib/r2-cleanup");
+  const db = await getDb();
+  const paymentId = oid(id);
+  const payment = await db
+    .collection("payments")
+    .findOne({ _id: paymentId });
+  if (!payment) throw new Error("Payment not found.");
+  if (payment.status !== "PENDING") {
+    throw new Error(
+      `Cannot delete a payment in status "${s(payment.status)}". Refund it instead.`
+    );
+  }
+  await db.collection("payments").deleteOne({ _id: paymentId });
+  await deleteR2Objects([payment.attachmentUrl as string]);
+  await logAudit({
+    userId,
+    module: "Payment",
+    action: "Delete",
+    referenceType: "Payment",
+    referenceId: id,
+    description: `Deleted payment ${s(payment.paymentNo ?? "")}`,
+  });
+  return { id };
 }

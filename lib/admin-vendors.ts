@@ -2,6 +2,14 @@ import { ObjectId } from "mongodb";
 import { getDb } from "@/lib/mongodb";
 import { formatCode, nextSequence } from "@/lib/sequences";
 import { deleteR2Objects } from "@/lib/r2-cleanup";
+import {
+  andFilters,
+  buildSort,
+  paginate,
+  textSearchFilter,
+  type ListQuery,
+  type PaginatedResult,
+} from "@/lib/list-query";
 
 export type VendorListItem = {
   id: string;
@@ -51,25 +59,74 @@ function normalizeText(value: string) {
   return value.trim();
 }
 
-export async function getVendors() {
-  const db = await getDb();
-  const vendors = await db.collection("vendors").find({}).sort({ createdAt: -1 }).toArray();
+const VENDOR_SEARCH_FIELDS = [
+  "vendorCode",
+  "companyName",
+  "ownerName",
+  "mobile",
+  "email",
+  "gstNumber",
+];
+const VENDOR_SORT_FIELDS = [
+  "createdAt",
+  "companyName",
+  "vendorCode",
+  "status",
+] as const;
 
-  return vendors.map(
-    (vendor) =>
-      ({
-        id: String(vendor._id),
-        vendorCode: String(vendor.vendorCode ?? ""),
-        vendorType: (vendor.vendorType ?? "GOLD") as VendorListItem["vendorType"],
-        companyName: String(vendor.companyName ?? ""),
-        ownerName: String(vendor.ownerName ?? ""),
-        mobile: String(vendor.mobile ?? ""),
-        gstNumber: String(vendor.gstNumber ?? ""),
-        status: (vendor.status ?? "ACTIVE") as VendorListItem["status"],
-        createdAt: vendor.createdAt ? new Date(vendor.createdAt).toISOString() : "",
-        logoUrl: String(vendor.logoUrl ?? ""),
-      }) satisfies VendorListItem
+function mapVendor(vendor: Record<string, unknown>): VendorListItem {
+  return {
+    id: String(vendor._id),
+    vendorCode: String(vendor.vendorCode ?? ""),
+    vendorType: (vendor.vendorType ?? "GOLD") as VendorListItem["vendorType"],
+    companyName: String(vendor.companyName ?? ""),
+    ownerName: String(vendor.ownerName ?? ""),
+    mobile: String(vendor.mobile ?? ""),
+    gstNumber: String(vendor.gstNumber ?? ""),
+    status: (vendor.status ?? "ACTIVE") as VendorListItem["status"],
+    createdAt: vendor.createdAt
+      ? new Date(vendor.createdAt as string).toISOString()
+      : "",
+    logoUrl: String(vendor.logoUrl ?? ""),
+  } satisfies VendorListItem;
+}
+
+export async function getVendors(
+  query?: ListQuery
+): Promise<PaginatedResult<VendorListItem>> {
+  const db = await getDb();
+
+  const q: ListQuery = query ?? {
+    page: 1,
+    pageSize: 20,
+    skip: 0,
+    limit: 20,
+    search: "",
+    sortField: "createdAt",
+    sortDir: -1,
+    status: "",
+    from: "",
+    to: "",
+  };
+
+  const filter = andFilters(
+    textSearchFilter(q.search, VENDOR_SEARCH_FIELDS),
+    q.status ? { status: q.status } : undefined
   );
+  const sort = buildSort(q.sortField, q.sortDir, VENDOR_SORT_FIELDS, "createdAt");
+
+  const [total, docs] = await Promise.all([
+    db.collection("vendors").countDocuments(filter),
+    db
+      .collection("vendors")
+      .find(filter)
+      .sort(sort)
+      .skip(q.skip)
+      .limit(q.limit)
+      .toArray(),
+  ]);
+
+  return paginate(docs.map(mapVendor), total, q);
 }
 
 export async function getVendorById(id: string) {
