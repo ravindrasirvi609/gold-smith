@@ -98,7 +98,7 @@ export async function getUserById(id: string) {
     mobile: String(user.mobile ?? ""),
     roleId: String(user.role ?? ""),
     status: (user.status ?? "ACTIVE") as UserFormValues["status"],
-    profileImage: user.profileImage ? String(user.profileImage) : null,
+    profileImage: user.profileImage ? String(user.profileImage) : undefined,
   };
 }
 
