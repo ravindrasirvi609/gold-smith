@@ -18,10 +18,10 @@ import {
 export function ThemeToggle() {
   const { setTheme, theme } = useTheme();
   const [mounted, setMounted] = useState(false);
-  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
     // Hydration-safe mount detection — the only way to render the correct
     // theme icon without a client/server mismatch. This runs once.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
   }, []);
 
